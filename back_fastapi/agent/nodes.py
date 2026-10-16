@@ -8,13 +8,24 @@ def make_node_open_salon(page: Page):
     async def node_open_salon(state: BookingState):
         print("👉 [Node] 미용실 예약 페이지 접속 및 일정 선택 중...")
         try:
-            # 💡 빠져있던 페이지 접속 로직 추가!
             await page.goto(state["salon_url"], wait_until="domcontentloaded")
             await page.wait_for_timeout(2000)
+
             await page.evaluate("window.scrollTo(0, 0)")
             await page.wait_for_timeout(500)
 
             iframe = page.frame_locator("iframe#entryIframe")
+
+            booking_main_btn = iframe.locator("[data-nlog-area='plc_btp.booking']")
+
+            # 버튼이 보일 때까지 대기 후 클릭
+            await booking_main_btn.wait_for(state="visible", timeout=5000)
+            await booking_main_btn.click()
+
+            # 예약 탭 로딩 대기 (필요시 iframe 내부 전환 대기)
+            await page.wait_for_timeout(2000)
+
+
             search_btn = iframe.locator("[data-nlog-area='mpl_dgr.btime']")
             await search_btn.wait_for(state="visible", timeout=5000)
             await search_btn.click()
