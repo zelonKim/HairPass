@@ -6,7 +6,8 @@ from openai import OpenAI
 from schema import BookingRequest, NormalizedBookingState
 from utils.normalizer import normalize_booking_data_with_llm
 from playwright.async_api import async_playwright
-
+from utils.run_and_callback import run_and_callback
+import urllib.parse
 
 app = FastAPI(title="HairPass AI Agent Server")
 
@@ -21,9 +22,14 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     # 1. LLM을 통한 예약 데이터 지능형 규격화 수행
     normalized_data: NormalizedBookingState = normalize_booking_data_with_llm(req)
 
+    encoded_salon_name = urllib.parse.quote(req.salon_name)
+
+    generated_salon_url = (
+        f"https://map.naver.com/p/search/{encoded_salon_name}?c=15.00,0,0,0,dh"
+    )
+
     print("\n" + "=" * 50)
     print("🤖 [AI 예약 정규화 결과]")
-    print(f" - 예약 URL: {normalized_data.salon_url}")
     print(
         f" - 예약 날짜 & 시간: {normalized_data.target_date} & {normalized_data.target_time}"
     )
@@ -33,10 +39,11 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     )
     print(f" - 결제 수단:  {normalized_data.payment_method}")
     print("=" * 50 + "\n")
-
+    
+    
     # 2. Playwright 에이전트에 주입할 초기 상태(State) 구성
     initial_state: BookingState = {
-        "salon_url": normalized_data.salon_url,
+        "salon_url": generated_salon_url,
         "target_date": normalized_data.target_date,
         "target_time": normalized_data.target_time,
         "designer_name": normalized_data.designer_name,
@@ -49,11 +56,6 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     }
 
     # 3. FastAPI BackgroundTasks를 통해 비동기로 Playwright 에이전트 실행
-    background_tasks.add_task(run_booking_agent, initial_state)
+    background_tasks.add_task(run_and_callback, initial_state, req.booking_id)
 
-    return {
-        "status": "accepted",
-        "message": "AI가 예약 데이터를 성공적으로 규격화하였고, 백그라운드에서 자동화 예약을 수행합니다.",
-        "raw_payload": req.dict(),
-        "normalized_payload": initial_state,
-    }
+    return {"status": "accepted", "message": "자동화 예약 백그라운드 실행 시작"}

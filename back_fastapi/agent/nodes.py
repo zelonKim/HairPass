@@ -1,5 +1,13 @@
 from playwright.async_api import Page
 from agent.state import BookingState
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+import json
+
+load_dotenv()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def make_node_open_salon(page: Page):
@@ -24,7 +32,6 @@ def make_node_open_salon(page: Page):
 
             # 예약 탭 로딩 대기 (필요시 iframe 내부 전환 대기)
             await page.wait_for_timeout(2000)
-
 
             search_btn = iframe.locator("[data-nlog-area='mpl_dgr.btime']")
             await search_btn.wait_for(state="visible", timeout=5000)
@@ -92,27 +99,89 @@ def make_node_select_designer(page: Page):
     """4단계: 디자이너 카드 밑의 [N 예약] 버튼을 직접 클릭하는 노드 팩토리"""
 
     async def node_select_designer(state: BookingState):
-        designer_name = state["designer_name"]
-        print(f"👉 [Node] '{designer_name}' 디자이너의 [N 예약] 버튼 누르는 중...")
+        designer_name = state["designer_name"]  # 예: "소희 실장"
+        print(f"👉 '{designer_name}' 디자이너의 [N 예약] 버튼 누르는 중...")
+
         try:
             iframe = page.frame_locator("iframe#entryIframe")
+            designer_card = None
 
-            # 1. 해당 디자이너 이름(예: "희정 실장", "지영 실장")이 들어있는 카드(li) 찾기
-            designer_card = iframe.locator("li.VLkJM").filter(has_text=designer_name)
+            # 1. 1차 시도: 호칭을 포함한 전체 텍스트로 정확히 찾기 시도
+            try:
+                designer_card = (
+                    iframe.locator("li.VLkJM").filter(has_text=designer_name).first
+                )
+                await designer_card.wait_for(state="visible", timeout=3000)
+            except Exception:
+                # 2. 2차 Self-Healing: 실패 시 화면에 있는 모든 디자이너 목록을 긁어와 AI 매칭
+                print(
+                    "🤖 [Self-Healing] 직함 불일치 감지. 화면 내 디자이너 목록을 긁어와 올바른 카드를 매칭합니다."
+                )
 
-            # 2. 카드 안의 [N 예약] 버튼(data-nlog-area='mpl_dgr.booking') 타겟팅
+                # 화면의 모든 디자이너 카드 텍스트 수집
+                all_cards_text = await iframe.locator(
+                    "li.VLkJM"
+                ).all_inner_texts()  # 혹은 적절한 리스트 텍스트
+
+                available_designers = [
+                    card.replace("\n", " ").strip()
+                    for card in all_cards_text
+                    if card.strip()
+                ]
+
+                if not available_designers:
+                    raise Exception("화면에서 디자이너 목록을 찾을 수 없습니다.")
+
+                # LLM 프롬프트: 이름만으로(예: '소희') 가장 잘 맞는 디자이너 카드 찾기
+                # 원본 이름에서 호칭을 떼고 순수 이름(예: '소희')만 추출
+                pure_name = designer_name.split()[0]
+
+                prompt = f"""
+                    사용자가 찾던 디자이너 이름: "{pure_name}" 
+                    현재 화면의 실제 디자이너 카드 목록:
+                    {available_designers}
+
+                    [지침]
+                    - 위 디자이너 카드 목록 중에서 사용자가 원하는 이름("{pure_name}")이 포함된 **실제 디자이너 항목의 전체 텍스트(직함을 포함한 정확한 디자이너 이름)**를 목록에서 있는 그대로 정확하게 골라주세요.
+
+                    응답 포맷 (JSON):
+                    {{"matched_designer": "목록에_있는_정확한_텍스트_그대로"}}
+                """
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                )
+
+                content = response.choices[0].message.content or "{}"
+
+                result_json = json.loads(content)
+                # 화면에 실제 존재하는 정확한 명칭으로 받기
+                corrected_designer_name = result_json.get("matched_designer", pure_name)
+
+                print(
+                    f"💡 [Self-Healing 결과] 매칭된 정확한 명칭: '{corrected_designer_name}'"
+                )
+
+                # 수정된 키워드(순수 이름 등)로 다시 필터링
+                designer_card = (
+                    iframe.locator("li.VLkJM")
+                    .filter(has_text=corrected_designer_name)
+                    .first
+                )
+                await designer_card.wait_for(state="visible", timeout=4000)
+
+            # 3. 예약 버튼 클릭
             direct_reserve_btn = designer_card.locator(
                 "a[data-nlog-area='mpl_dgr.booking']"
             )
-
-            # 3. 버튼이 보일 때까지 대기 후 바로 클릭!
             await direct_reserve_btn.wait_for(state="visible", timeout=5000)
             await direct_reserve_btn.click()
 
             print(
-                f"✨ [디자이너 선택 완료] '{designer_name}' [N 예약] 버튼 직접 클릭 성공!"
+                f"✨ [+ 디자이너 선택 완료] '{designer_name}' [N 예약] 버튼 직접 클릭 성공!"
             )
-
             await page.wait_for_timeout(1500)
             return {"current_step": "select_service"}
 
@@ -131,14 +200,9 @@ def make_node_select_designer(page: Page):
 
 
 def make_node_select_service(page: Page):
-    """5단계: 시술 대분류 탭 클릭 후 상세 메뉴 선택 및 '다음 단계' 클릭 노드 팩토리"""
-
     async def node_select_service(state: BookingState):
         category = state["service_category"]
         detail_menu = state["service_detail"]
-        print(
-            f"👉 [Node] 시술 메뉴 선택 중: 대분류('{category}') -> 상세('{detail_menu}')"
-        )
 
         try:
             iframe = page.frame_locator("iframe#entryIframe")
@@ -153,6 +217,7 @@ def make_node_select_service(page: Page):
 
             # 2. 상세 시술 메뉴 선택
             menu_item = iframe.locator("li.option_item").filter(has_text=detail_menu)
+
             await menu_item.wait_for(state="visible", timeout=5000)
             await menu_item.click()
             await page.wait_for_timeout(1000)
@@ -162,6 +227,7 @@ def make_node_select_service(page: Page):
                 "button[data-nlog-area='bok_floating.proceedtobook'], button.NextButton__btn_next__4hAoO",
                 has_text="다음",
             ).first
+
             if await next_btn.count() > 0:
                 await next_btn.click()
                 print(f"🚀 ['다음 단계' 버튼 클릭 성공]")
@@ -194,6 +260,81 @@ def make_node_select_service(page: Page):
 
         except Exception as e:
             print(f"❌ [시술 메뉴 선택 실패]: {e}")
+            print(
+                "🤖 [Self-Healing] 화면 내 시술 목록을 긁어와 AI로 올바른 명칭을 매칭합니다."
+            )
+
+            try:
+                iframe = page.frame_locator("iframe#entryIframe")
+
+                # 1. 현재 화면(iframe)의 모든 시술 항목 텍스트 긁어오기
+                option_elements = await iframe.locator(
+                    "li.option_item"
+                ).all_inner_texts()
+
+                # 텍스트 정제 (줄바꿈 제거 및 빈 값 제외)
+                available_options = [
+                    opt.replace("\n", " ").strip()
+                    for opt in option_elements
+                    if opt.strip()
+                ]
+
+                if not available_options:
+                    raise Exception("화면에서 선택 가능한 시술 옵션을 찾지 못했습니다.")
+
+                # 2. LLM에게 원래 요구사항과 실제 화면 목록을 주고 정확한 메뉴명 재추출
+                prompt = f"""
+                    사용자가 원래 원한 메뉴: "{detail_menu}"
+                    현재 화면의 실제 전체 메뉴 목록:
+                    {available_options}
+
+                    [지침]
+                    - 위 목록 중에서 사용자가 원하는 메뉴와 가장 잘 일치하는 항목을 찾으세요.
+                    - 단, 가격이나 긴 설명글을 제외하고, 검색에 사용할 수 있는 **대표 메뉴 이름 핵심 단어(예: "남성커트", "여성커트", "컷+다운펌")** 만 짧게 추출하세요.
+
+                    응답 포맷 (JSON):
+                    {{"matched_keyword": "남성커트"}}
+                """
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                )
+
+                result = json.loads(response.choices[0].message.content or "{}")
+                corrected_keyword = result.get("matched_keyword")
+
+                print(f"✨ [AI 매칭 결과]: '{detail_menu}' ➔ '{corrected_keyword}'")
+
+                if corrected_keyword:
+                    # 3. AI가 골라준 올바른 명칭으로 재시도
+                    retry_item = (
+                        iframe.locator("li.option_item")
+                        .filter(has_text=corrected_keyword)
+                        .first
+                    )
+                    await retry_item.wait_for(state="visible", timeout=4000)
+                    await retry_item.click()
+                    await page.wait_for_timeout(1000)
+
+                    # 하단 '다음' 버튼 클릭
+                    next_btn = iframe.locator(
+                        "button[data-nlog-area='bok_floating.proceedtobook'], button.NextButton__btn_next__4hAoO",
+                        has_text="다음",
+                    ).first
+                    if await next_btn.count() > 0:
+                        await next_btn.click()
+
+                    return {
+                        "service_detail": corrected_keyword,  # state 갱신
+                        "current_step": "payment",
+                    }
+
+            except Exception as healing_error:
+                print(f"❌ [Self-Healing 복구 실패]: {healing_error}")
+
+            # 최종 실패 시 에러 상태 반환
             return {
                 "is_success": False,
                 "error_message": str(e),

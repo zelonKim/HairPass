@@ -18,7 +18,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "updated_at",
             "payment_method",
         )
-        read_only_fields = ("id", "status", "memo", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
 
     def create(self, validated_data):
         return Booking.objects.create(**validated_data)

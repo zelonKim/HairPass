@@ -4,6 +4,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .models import Booking
 from .serializers import BookingSerializer
+from rest_framework.permissions import AllowAny
 
 
 class BookingListCreateView(generics.ListCreateAPIView):
@@ -72,6 +73,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
             )
 
             payload = {
+                "booking_id": booking.id,
                 "salon_name": booking.salon_name,
                 "booking_date": str(booking.booking_date),
                 "booking_time": str(booking.booking_time),
@@ -111,3 +113,38 @@ class BookingDetailDeleteView(generics.DestroyAPIView):
     def get_queryset(self):
         # 본인이 생성한 예약만 삭제 가능하도록 제한
         return Booking.objects.filter(user=self.request.user)
+
+
+###############################################################################
+
+
+class BookingConfirmedView(generics.UpdateAPIView):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
+    permission_classes = [AllowAny]
+
+    def get_object(self):
+        # Body로 전달받은 booking_id로 DB 객체 조회
+        booking_id = self.request.data.get("booking_id")
+        return generics.get_object_or_404(Booking, id=booking_id)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # FastAPI에서 넘어온 데이터 매핑
+        data = request.data.copy()
+
+        if "error_message" in data:
+            data["memo"] = data.get("error_message")
+
+        serializer = self.get_serializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(
+            {
+                "message": "예약 정보가 성공적으로 동기화되었습니다.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )

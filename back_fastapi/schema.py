@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
+
 class BookingRequest(BaseModel):
+    booking_id: int
     salon_name: str
     booking_date: str
     booking_time: str
@@ -11,7 +13,6 @@ class BookingRequest(BaseModel):
 
 # LLM을 통해 정규화된 최종 에이전트 상태 스키마 (Playwright 입력용)
 class NormalizedBookingState(BaseModel):
-    salon_url: str
     target_date: str  # 예: "30" (1~31 숫자 형태)
     target_time: str  # 예: "17:00" 혹은 시(0):분(00) 규격
     designer_name: str  # 예: "하영 실장" (직함 포함)

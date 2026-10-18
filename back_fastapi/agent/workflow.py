@@ -9,6 +9,7 @@ from agent.nodes import (
 )
 from playwright.async_api import async_playwright
 import os
+import httpx
 
 
 async def run_booking_agent(initial_state: BookingState):
