@@ -5,6 +5,10 @@ from rest_framework.response import Response
 from .models import Booking
 from .serializers import BookingSerializer
 from rest_framework.permissions import AllowAny
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class BookingListCreateView(generics.ListCreateAPIView):
@@ -22,10 +26,10 @@ class BookingListCreateView(generics.ListCreateAPIView):
 
         # 2. 필수 슬롯 누락 여부 검사
         salon_name = serializer.validated_data.get("salon_name")
-        booking_date = serializer.validated_data.get("booking_date")
-        booking_time = serializer.validated_data.get("booking_time")
         designer_name = serializer.validated_data.get("designer_name")
         menu_name = serializer.validated_data.get("menu_name")
+        booking_date = serializer.validated_data.get("booking_date")
+        booking_time = serializer.validated_data.get("booking_time")
         payment_method = serializer.validated_data.get("payment_method")
 
         # 핵심 정보 중 하나라도 비어있다면 슬롯 필링(대화형 되묻기) 응답 반환
@@ -55,7 +59,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
             return Response(
                 {
                     "status": "need_more_info",
-                    "message": f"예약을 완료하기 위해 다음 정보가 필요해요: {', '.join(missing_fields)}를(을) 알려주세요!",
+                    "message": f"예약을 완료하기 위해 {', '.join(missing_fields)} 정보를 알려주세요!",
                     "missing_fields": missing_fields,
                 },
                 status=status.HTTP_200_OK,  # 프론트엔드 채팅 UI에서 대화를 이어갈 수 있도록 200 OK 응답
@@ -66,11 +70,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
 
         # 5. FastAPI 자동화 서버 규격(BookingRequest)에 맞춰 페이로드 구성 후 트리거 전송
         try:
-            fastapi_url = getattr(
-                settings,
-                "FASTAPI_AUTO_BOOKING_URL",
-                "http://127.0.0.1:8001/api/v1/auto-booking",
-            )
+            fastapi_url = f"{os.getenv('FASTAPI_BASE_URL')}/api/v1/auto-booking"
 
             payload = {
                 "booking_id": booking.id,
@@ -118,10 +118,9 @@ class BookingDetailDeleteView(generics.DestroyAPIView):
 ###############################################################################
 
 
-class BookingConfirmedView(generics.UpdateAPIView):
+class BookingSuccessUpdateView(generics.UpdateAPIView):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
-    permission_classes = [AllowAny]
 
     def get_object(self):
         # Body로 전달받은 booking_id로 DB 객체 조회

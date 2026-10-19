@@ -31,15 +31,8 @@ class User(AbstractUser):
         max_length=500, blank=True, null=True, verbose_name="프로필 이미지 URL"
     )
 
-    # 카카오/네이버 연동 시 수집할 핸드폰 번호
-    phone_number = models.CharField(
-        max_length=20, blank=True, null=True, verbose_name="전화번호"
-    )
-
-    #  단골 미용실 네이버 예약 링크
-    favorite_salon_url = models.URLField(
-        blank=True, null=True, verbose_name="단골 미용실 예약 URL"
-    )
+    #  단골 미용실
+    favorite_salon = models.CharField(blank=True, null=True, verbose_name="단골 미용실")
 
     #  선호하는 디자이너 이름
     favorite_designer = models.CharField(
@@ -58,14 +51,16 @@ class User(AbstractUser):
     last_booking_date = models.DateField(
         blank=True, null=True, verbose_name="최근 방문일"
     )
-    
+
     push_token = models.CharField(
         max_length=255, blank=True, null=True, verbose_name="푸시 토큰"
     )
+
+    USERNAME_FIELD = "username"
 
     class Meta:
         verbose_name = "유저"
         verbose_name_plural = "유저 목록"
 
     def __str__(self):
-        return f"[{self.get_social_provider_display()}] {self.username} ({self.phone_number or '번호 미등록'})"
+        return f"[{self.get_social_provider_display()}] {self.username}"

@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import json
+import re
 
 load_dotenv()
 
@@ -99,80 +100,19 @@ def make_node_select_designer(page: Page):
     """4단계: 디자이너 카드 밑의 [N 예약] 버튼을 직접 클릭하는 노드 팩토리"""
 
     async def node_select_designer(state: BookingState):
-        designer_name = state["designer_name"]  # 예: "소희 실장"
+        designer_name = state["designer_name"]
         print(f"👉 '{designer_name}' 디자이너의 [N 예약] 버튼 누르는 중...")
 
         try:
             iframe = page.frame_locator("iframe#entryIframe")
-            designer_card = None
 
-            # 1. 1차 시도: 호칭을 포함한 전체 텍스트로 정확히 찾기 시도
-            try:
-                designer_card = (
-                    iframe.locator("li.VLkJM").filter(has_text=designer_name).first
-                )
-                await designer_card.wait_for(state="visible", timeout=3000)
-            except Exception:
-                # 2. 2차 Self-Healing: 실패 시 화면에 있는 모든 디자이너 목록을 긁어와 AI 매칭
-                print(
-                    "🤖 [Self-Healing] 직함 불일치 감지. 화면 내 디자이너 목록을 긁어와 올바른 카드를 매칭합니다."
-                )
+            # 순수 성함만으로 디자이너 카드 찾기 (어떤 직함이 붙어 있든 성함이 포함되어 있으므로 100% 매칭)
+            designer_card = (
+                iframe.locator("li.VLkJM").filter(has_text=designer_name).first
+            )
+            await designer_card.wait_for(state="visible", timeout=5000)
 
-                # 화면의 모든 디자이너 카드 텍스트 수집
-                all_cards_text = await iframe.locator(
-                    "li.VLkJM"
-                ).all_inner_texts()  # 혹은 적절한 리스트 텍스트
-
-                available_designers = [
-                    card.replace("\n", " ").strip()
-                    for card in all_cards_text
-                    if card.strip()
-                ]
-
-                if not available_designers:
-                    raise Exception("화면에서 디자이너 목록을 찾을 수 없습니다.")
-
-                # LLM 프롬프트: 이름만으로(예: '소희') 가장 잘 맞는 디자이너 카드 찾기
-                # 원본 이름에서 호칭을 떼고 순수 이름(예: '소희')만 추출
-                pure_name = designer_name.split()[0]
-
-                prompt = f"""
-                    사용자가 찾던 디자이너 이름: "{pure_name}" 
-                    현재 화면의 실제 디자이너 카드 목록:
-                    {available_designers}
-
-                    [지침]
-                    - 위 디자이너 카드 목록 중에서 사용자가 원하는 이름("{pure_name}")이 포함된 **실제 디자이너 항목의 전체 텍스트(직함을 포함한 정확한 디자이너 이름)**를 목록에서 있는 그대로 정확하게 골라주세요.
-
-                    응답 포맷 (JSON):
-                    {{"matched_designer": "목록에_있는_정확한_텍스트_그대로"}}
-                """
-
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"},
-                )
-
-                content = response.choices[0].message.content or "{}"
-
-                result_json = json.loads(content)
-                # 화면에 실제 존재하는 정확한 명칭으로 받기
-                corrected_designer_name = result_json.get("matched_designer", pure_name)
-
-                print(
-                    f"💡 [Self-Healing 결과] 매칭된 정확한 명칭: '{corrected_designer_name}'"
-                )
-
-                # 수정된 키워드(순수 이름 등)로 다시 필터링
-                designer_card = (
-                    iframe.locator("li.VLkJM")
-                    .filter(has_text=corrected_designer_name)
-                    .first
-                )
-                await designer_card.wait_for(state="visible", timeout=4000)
-
-            # 3. 예약 버튼 클릭
+            # 예약 버튼 클릭
             direct_reserve_btn = designer_card.locator(
                 "a[data-nlog-area='mpl_dgr.booking']"
             )
@@ -279,6 +219,8 @@ def make_node_select_service(page: Page):
                     if opt.strip()
                 ]
 
+                print(available_options)
+
                 if not available_options:
                     raise Exception("화면에서 선택 가능한 시술 옵션을 찾지 못했습니다.")
 
@@ -308,10 +250,13 @@ def make_node_select_service(page: Page):
                 print(f"✨ [AI 매칭 결과]: '{detail_menu}' ➔ '{corrected_keyword}'")
 
                 if corrected_keyword:
-                    # 3. AI가 골라준 올바른 명칭으로 재시도
+                    escaped_keyword = re.escape(corrected_keyword.strip())
+                    flexible_pattern = re.compile(r"\s*".join(escaped_keyword.split()))
+
+                    # 정규식 패턴(re.compile)을 사용하여 텍스트 필터링
                     retry_item = (
                         iframe.locator("li.option_item")
-                        .filter(has_text=corrected_keyword)
+                        .filter(has_text=flexible_pattern)
                         .first
                     )
                     await retry_item.wait_for(state="visible", timeout=4000)

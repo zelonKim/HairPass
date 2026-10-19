@@ -2,6 +2,9 @@ from agent.state import BookingState
 from agent.workflow import run_booking_agent
 import os
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # 백그라운드에서 실행될 에이전트 구동 및 상태 콜백 함수
@@ -11,11 +14,9 @@ async def run_and_callback(initial_state: BookingState, booking_id: int):
 
     # 2. 결과 판정
     # result에 최종적으로 확정된 데이터(메뉴, 날짜, 상태 등)가 들어있음
-    is_success = result.get("is_success", True)  # 혹은 명확한 성공 조건 체크
+    is_success = result.get("is_success", True)
 
-    django_callback_url = (
-        "http://127.0.0.1:8000/api/bookings/confirmed/"  # Django 업뎃 API 주소
-    )
+    django_callback_url = f"{os.getenv('DJANGO_BASE_URL')}/api/bookings/success-update/"
 
     callback_data = {
         "booking_id": booking_id,

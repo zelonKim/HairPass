@@ -13,10 +13,6 @@ class SignupSerializer(serializers.ModelSerializer):
         fields = (
             "username",
             "password",
-            "phone_number",
-            "favorite_salon_url",
-            "favorite_designer",
-            "favorite_menu",
         )
 
     def create(self, validated_data):

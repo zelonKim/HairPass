@@ -28,7 +28,7 @@ def normalize_booking_data_with_llm(req: BookingRequest) -> NormalizedBookingSta
         2. target_time (매우 중요): 네이버 예약 시간 버튼에 표시되는 텍스트와 일치하도록 **12시간제 형태("시:분" 또는 "오후/오전 시:분")**로 변환해 주세요. 
         - 예시: 오후 3시 -> "3:00" (절대 "15:00"으로 변환하지 말 것! 네이버 UI는 "3:00" 형태로 표출됩니다.)
         - 예시: 오후 5시 -> "5:00"
-        3. designer_name: 디자이너 이름 뒤에 '실장', '디자이너', '원장' 등 적절한 호칭을 포함한 명칭으로 다듬어 주세요. (예: "하영" -> "하영 실장")
+        3. designer_name: 디자이너의 **순수 성함(이름)만** 추출해 주세요. (예: "소희 실장" -> "소희", "민지 디자이너" -> "민지", "소현쌤" -> "소현" 등 직함이나 호칭은 절대 포함하지 마세요.)
         4. service_category 및 service_detail (매우 중요): 
         - service_category는 네이버 예약의 상단 카테고리 탭 이름 중 하나여야 합니다. (예: "컷", "컬러", "펌", "클리닉", "세트", "드라이" 중 택 1)
         - service_detail은 해당 카테고리 내의 실제 시술 메뉴 이름과 정확히 일치하거나 유사해야 합니다. (예: "남성커트", "여성커트", "일반펌", "일반염색" 등)
@@ -38,7 +38,7 @@ def normalize_booking_data_with_llm(req: BookingRequest) -> NormalizedBookingSta
         {{
             "target_date": "숫자만_추출된_일",
             "target_time": "3:00 또는 5:00 같은 12시간제 형식",
-            "designer_name": "호칭이포함된_디자이너이름",
+            "designer_name": "직함을 제외한 순수 이름",
             "service_category": "컷, 컬러, 펌 등 카테고리 탭 이름",
             "service_detail": "구체적인 시술 메뉴 이름",
             "payment_method": "npay 또는 onsite"

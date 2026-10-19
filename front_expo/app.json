@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "헤어패스",
+    "slug": "hairpass",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/HairPass_icon.png",
+    "scheme": "hairpass",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/HairPass_icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#016bfc"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#016bfc",
+        "foregroundImage": "./assets/images/HairPass_icon.png",
+        "monochromeImage": "./assets/images/HairPass_icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
