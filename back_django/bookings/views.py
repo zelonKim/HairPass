@@ -73,6 +73,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
             fastapi_url = f"{os.getenv('FASTAPI_BASE_URL')}/api/v1/auto-booking"
 
             payload = {
+                "user_id": request.user.id,
                 "booking_id": booking.id,
                 "salon_name": booking.salon_name,
                 "booking_date": str(booking.booking_date),
@@ -80,6 +81,8 @@ class BookingListCreateView(generics.ListCreateAPIView):
                 "designer_name": booking.designer_name,
                 "menu_name": booking.menu_name,
                 "payment_method": booking.payment_method,
+                "naver_id": request.user.naver_id,
+                "naver_pw": request.user.naver_pw,
             }
 
             # FastAPI 서버 백그라운드 태스크 트리거 발송

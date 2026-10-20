@@ -9,17 +9,43 @@ from agent.nodes import (
 )
 from playwright.async_api import async_playwright
 import os
-import httpx
+import shutil
 
 
 async def run_booking_agent(initial_state: BookingState):
-    user_data_dir = os.path.expanduser("~/.playwright_naver_profile")
+    # 사용자별 고유 폴더로 세션 분리
+    user_id = initial_state.get("user_id", "default_user")
+    user_data_dir = os.path.expanduser(f"~/.playwright_profiles/user_{user_id}")
+
+    naver_id = initial_state.get("naver_id")
+    naver_pw = initial_state.get("naver_pw")
+
+    print("🧾 네이버 계정:", naver_id, naver_pw)
+
+    if os.path.exists(user_data_dir):
+        try:
+            shutil.rmtree(user_data_dir)
+            print(f"🧹 [Playwright] 유저 {user_id}의 이전 프로필 세션 정리 완료")
+        except Exception as e:
+            print(f"⚠️ 프로필 정리 실패: {e}")
 
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir, headless=False, args=["--start-maximized"]
+            user_data_dir=user_data_dir,
+            headless=False,  # 개발 중에는 False, 배포 시 True
+            # 💡 PC 전용 데스크톱 User-Agent 설정
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800},  # PC용 넉넉한 뷰포트 크기
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-blink-features=AutomationControlled",  # 봇 탐지 방지
+            ],
         )
+
         page = context.pages[0] if context.pages else await context.new_page()
+
+        await page.wait_for_timeout(1000)
 
         # 1. Graph 생성
         workflow = StateGraph(BookingState)

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891337995381",
+    "project_id": "hairpass-20509",
+    "storage_bucket": "hairpass-20509.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891337995381:android:37b981f00152fbed09f43c",
+        "android_client_info": {
+          "package_name": "com.zelon.hairpass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA07xch5C17QzwfJF3emxSvrJklNbJumTM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

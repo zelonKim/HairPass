@@ -4,6 +4,8 @@ from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from .serializers import SignupSerializer, LoginSerializer
+from rest_framework.permissions import IsAuthenticated
+from .serializers import FavoriteSerializer, UserInfoSerializer
 
 
 class SignupView(APIView):
@@ -50,3 +52,179 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+###############################################################################
+
+
+class FavoriteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """유저의 단골 미용실, 선호 디자이너, 자주 받는 시술 조회"""
+        serializer = FavoriteSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        """유저의 선호 정보 수정"""
+        serializer = FavoriteSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "선호 정보가 성공적으로 수정되었습니다.",
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+##############################################################################
+
+
+class UserInfoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserInfoSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        serializer = UserInfoSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+##############################################################################
+
+
+class WithdrawView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.delete()
+        return Response(
+            {"message": "회원 탈퇴가 완료되었습니다."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
+
+
+##############################################################################
+
+
+class NaverCookieView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        raw_cookies = request.data.get("cookies")
+
+        # 연동 해제 (초기화)
+        if raw_cookies is None or raw_cookies == "":
+            user.naver_account_cookie = None
+            user.save(update_fields=["naver_account_cookie"])
+            return Response(
+                {"message": "네이버 연동 정보가 초기화되었습니다."},
+                status=status.HTTP_200_OK,
+            )
+
+        playwright_cookies = []
+
+        if isinstance(raw_cookies, str):
+            cookie_items = raw_cookies.split(";")
+            for item in cookie_items:
+                if "=" in item:
+                    name, value = item.strip().split("=", 1)
+                    name = name.strip()
+                    value = value.strip()
+
+                    # 💡 로그인 세션에 핵심적인 네이버 쿠키 위주로 필터링 및 보안 규격 맞춤
+                    if (
+                        name
+                        and value
+                        and name in ["NID_AUT", "NID_SES", "NID_JDK", "NID_JKL"]
+                    ):
+                        playwright_cookies.append(
+                            {
+                                "name": name,
+                                "value": value,
+                                "domain": ".naver.com",
+                                "path": "/",
+                                "secure": True,
+                                "httpOnly": True,
+                                "sameSite": "Lax",
+                            }
+                        )
+        elif isinstance(raw_cookies, list):
+            playwright_cookies = raw_cookies
+        else:
+            return Response(
+                {"error": "올바르지 않은 쿠키 형식입니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.naver_account_cookie = playwright_cookies
+        user.save(update_fields=["naver_account_cookie"])
+
+        return Response(
+            {
+                "message": "네이버 계정이 성공적으로 연동되었습니다.",
+                "cookie_count": len(playwright_cookies),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+####################################################################
+
+
+class NaverAccountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # 1. 네이버 계정 정보 조회
+    def get(self, request):
+        user = request.user
+        return Response(
+            {
+                "naver_id": user.naver_id,
+                "naver_pw": user.naver_pw,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    # 2. 네이버 계정 정보 수정 및 저장
+    def patch(self, request):
+        user = request.user
+        naver_id = request.data.get("naver_id")
+        naver_pw = request.data.get("naver_pw")
+
+        # 빈 값이나 공백이 들어온 경우 처리
+        if naver_id is not None:
+            user.naver_id = naver_id.strip()
+        if naver_pw is not None:
+            user.naver_pw = naver_pw.strip()
+
+        user.save(update_fields=["naver_id", "naver_pw"])
+
+        return Response(
+            {
+                "message": "네이버 계정 정보가 성공적으로 저장되었습니다.",
+                "naver_id": user.naver_id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request):
+        user = request.user
+        user.naver_id = None
+        user.naver_pw = None
+        user.save(update_fields=["naver_id", "naver_pw"])
+
+        return Response(
+            {"message": "네이버 계정 연동이 해제되었습니다."},
+            status=status.HTTP_200_OK,
+        )

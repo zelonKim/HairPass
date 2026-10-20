@@ -13,7 +13,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.point, // 활성화된 탭 색상 (원하는 액센트 컬러로 변경 가능)
         tabBarInactiveTintColor: "#8E8E93", // 비활성화된 탭 색상
         tabBarStyle: {
-          bottom: Platform.OS === "ios" ? "3%" : "0%",
+          bottom: Platform.OS === "ios" ? "3%" : "5%",
           paddingBottom: 5,
           paddingTop: 5,
           backgroundColor: Colors.card,
@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "홈",
-          headerTitle: "HairPass",
+
           tabBarIcon: ({ color, size }) => (
             <Store color={color} size={22} strokeWidth={2} />
           ),
@@ -43,8 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          title: "예약 현황",
-          headerTitle: "실시간 예약 현황",
+          title: "예약 내역",
           tabBarIcon: ({ color, size }) => (
             <CalendarDays color={color} size={22} strokeWidth={2} />
           ),
@@ -56,7 +55,6 @@ export default function TabLayout() {
         name="favorites"
         options={{
           title: "즐겨찾기",
-          headerTitle: "단골 매장 / 디자이너",
           tabBarIcon: ({ color, size }) => (
             <Heart color={color} size={22} strokeWidth={2} />
           ),
@@ -68,7 +66,6 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "설정",
-          headerTitle: "설정 및 마이페이지",
           tabBarIcon: ({ color, size }) => (
             <UserRoundCog color={color} size={22} strokeWidth={2} />
           ),

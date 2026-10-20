@@ -1,8 +1,9 @@
 import { client } from "@/api/client";
 import Colors from "@/constants/Colors";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { Calendar, Clock } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FavoriteData } from "./favorites";
+import { UserProfile } from "./settings";
 
 interface CreateBookingPayload {
   salon_name: string;
@@ -27,6 +30,11 @@ interface CreateBookingPayload {
 
 const createBooking = async (data: CreateBookingPayload) => {
   const response = await client.post("/api/bookings/", data);
+  return response.data;
+};
+
+const fetchUserProfile = async (): Promise<UserProfile> => {
+  const response = await client.get("/api/users/");
   return response.data;
 };
 
@@ -73,8 +81,14 @@ const pmSlots = [
   "8:30",
 ];
 
+const fetchFavorites = async (): Promise<FavoriteData> => {
+  const response = await client.get("/api/users/favorite/");
+  return response.data;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [salonName, setSalonName] = useState("");
   const [designerName, setDesignerName] = useState("");
@@ -93,6 +107,20 @@ export default function HomeScreen() {
   const calendarDays = getDaysInMonth(currentYear, currentMonth);
   const isCurrentMonth =
     currentYear === today.getFullYear() && currentMonth === today.getMonth();
+
+  const { data, isLoading, isError, refetch } = useQuery<FavoriteData>({
+    queryKey: ["favorites"],
+    queryFn: fetchFavorites,
+  });
+
+  // 조회된 데이터를 로컬 입력 상태와 동기화
+  useEffect(() => {
+    if (data) {
+      setSalonName(data.favorite_salon || "");
+      setDesignerName(data.favorite_designer || "");
+      setMenuName(data.favorite_menu || "");
+    }
+  }, [data]);
 
   const handlePrevMonth = () => {
     if (isCurrentMonth) return;
@@ -115,6 +143,11 @@ export default function HomeScreen() {
     }
   };
 
+  const { data: userInfo } = useQuery<UserProfile>({
+    queryKey: ["userInfo"],
+    queryFn: fetchUserProfile,
+  });
+
   const bookingMutation = useMutation({
     mutationFn: createBooking,
     onSuccess: (data) => {
@@ -126,6 +159,7 @@ export default function HomeScreen() {
         {
           text: "확인",
           onPress: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
             router.push("/(tabs)/bookings");
           },
         },
@@ -150,12 +184,29 @@ export default function HomeScreen() {
       return;
     }
 
+    if (!userInfo?.naver_id || !userInfo?.naver_pw) {
+      Alert.alert(
+        "네이버 계정 연동 필요",
+        "자동 예약을 위해 최초 1회 네이버 계정 연동이 필요합니다.",
+        [
+          { text: "취소", style: "cancel" },
+          {
+            text: "연동하기",
+            onPress: () => {
+              router.push("/(auth)/naver-login");
+            },
+          },
+        ],
+      );
+      return;
+    }
+
     bookingMutation.mutate({
       salon_name: salonName,
       designer_name: designerName,
       menu_name: menuName,
       booking_date: bookingDate,
-      booking_time: bookingTime, // "14:00" 형태의 string 그대로 전송
+      booking_time: bookingTime,
       payment_method: paymentMethod,
     });
   };
@@ -205,6 +256,12 @@ export default function HomeScreen() {
             onPress={() => setDateModalVisible(true)}
             activeOpacity={0.8}
           >
+            {/* 날짜 아이콘 추가 */}
+            <Calendar
+              size={18}
+              color={bookingDate ? Colors.text : Colors.subText}
+              style={styles.inputIcon}
+            />
             {bookingDate ? (
               <Text style={styles.inputText}>{bookingDate}</Text>
             ) : (
@@ -218,6 +275,12 @@ export default function HomeScreen() {
             onPress={() => setTimeModalVisible(true)}
             activeOpacity={0.8}
           >
+            {/* 시간 아이콘 추가 */}
+            <Clock
+              size={18}
+              color={bookingTime ? Colors.text : Colors.subText}
+              style={styles.inputIcon}
+            />
             {bookingTime ? (
               <Text style={styles.inputText}>{bookingTime}</Text>
             ) : (
@@ -438,7 +501,7 @@ export default function HomeScreen() {
               </View>
 
               {/* 오후 섹션 */}
-              <Text style={[styles.timeSectionTitle, { marginTop: 16 }]}>
+              <Text style={[styles.timeSectionTitle, { marginTop: 24 }]}>
                 오후
               </Text>
               <View style={styles.timeGrid}>
@@ -488,6 +551,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.subText,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  inputTouchField: {
+    flexDirection: "row", // 👈 아이콘과 텍스트 가로 정렬
+    alignItems: "center", // 👈 세로 중앙 정렬
+    backgroundColor: Colors.input,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  inputIcon: {
+    marginRight: 10, // 👈 아이콘과 텍스트 사이 간격
+  },
+  inputText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  nonSelectText: {
+    fontSize: 14,
+    color: Colors.muted,
+  },
   content: {
     padding: 20,
     paddingBottom: 40,
@@ -511,13 +603,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.subText,
-    marginTop: 12,
-    marginBottom: 6,
-  },
+
   input: {
     backgroundColor: "#F9FAFB",
     borderWidth: 1,
@@ -527,25 +613,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: Colors.text,
-  },
-  inputTouchField: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    justifyContent: "center",
-  },
-  inputText: {
-    fontSize: 14,
-    color: Colors.text,
+    fontWeight: "500",
   },
 
-  nonSelectText: {
-    fontSize: 14,
-    color: Colors.muted,
-  },
   paymentContainer: {
     flexDirection: "row",
     gap: 10,
@@ -614,17 +684,20 @@ const styles = StyleSheet.create({
   },
   navButtonText: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "500",
     color: Colors.primary,
+    marginBottom: 14,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: Colors.text,
     textAlign: "center",
+    marginBottom: 14,
   },
   modalCloseButton: {
     paddingVertical: 14,
+    marginTop: 18,
     borderRadius: 10,
     backgroundColor: "#F3F4F6",
     alignItems: "center",
@@ -679,7 +752,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: Colors.subText,
-    marginBottom: 8,
+    marginVertical: 12,
   },
   timeGrid: {
     flexDirection: "row",

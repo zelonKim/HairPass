@@ -140,6 +140,9 @@ def make_node_select_designer(page: Page):
 
 
 def make_node_select_service(page: Page):
+
+    select_designer_node = make_node_select_designer(page)
+
     async def node_select_service(state: BookingState):
         category = state["service_category"]
         detail_menu = state["service_detail"]
@@ -170,15 +173,14 @@ def make_node_select_service(page: Page):
 
             if await next_btn.count() > 0:
                 await next_btn.click()
-                print(f"🚀 ['다음 단계' 버튼 클릭 성공]")
+                print("🚀 ['다음 단계' 버튼 클릭 성공]")
 
             await page.wait_for_timeout(1500)
 
             # 💡 [여기!] 다음 단계로 넘어간 직후 로그인 창이 뜨는지 감지하는 안전장치 배치
             try:
+                ######## 로그인 자동화 로직 추가
                 await page.wait_for_timeout(1500)
-
-                # 짧은 시간 내에 로그인 요소가 나타나는지 확인
                 if "nid.naver.com" in page.url or "login" in page.url:
                     print("\n" + "=" * 50)
                     print("⚠️ [보안 감지] 네이버 로그인 페이지로 이동되었습니다!")
@@ -186,15 +188,50 @@ def make_node_select_service(page: Page):
                     print("👉 로그인이 완료되면 자동으로 다음 단계가 진행됩니다.")
                     print("=" * 50 + "\n")
 
+                    # BookingState 등에서 전달받은 naver_id, naver_pw 가져오기
+                    # (예: state 딕셔너리 객체 혹은 변수명에 맞게 조정해 주세요)
+                    naver_id = state.get("naver_id")
+                    naver_pw = state.get("naver_pw")
+
+                    if naver_id and naver_pw:
+                        # 1. 아이디 입력 (id="id" 또는 input[name="id"])
+                        await page.wait_for_selector("#id", state="visible")
+                        await page.click("#id")
+                        # 네이버는 한 번에 꽂아넣는 것보다 type이 안전합니다.
+                        await page.type("#id", naver_id, delay=100)
+
+                        # 2. 비밀번호 입력 (id="pw" 또는 input[name="pw"])
+                        await page.wait_for_selector("#pw", state="visible")
+                        await page.click("#pw")
+                        await page.type("#pw", naver_pw, delay=100)
+
+                        # 3. 로그인 버튼 클릭
+                        await page.wait_for_selector("#loginBtn_row", state="visible")
+                        await page.click("#loginBtn_row")
+                        print(
+                            "✨ [자동 로그인] 계정 정보 입력 및 로그인 버튼 클릭 완료!"
+                        )
+                    else:
+                        print(
+                            "❌ [오류] 에이전트 상태에 네이버 계정 정보(naver_id/naver_pw)가 없습니다."
+                        )
+
                     # 사용자가 로그인을 완료하여 로그인 창이 사라질 때까지 대기
                     while "nid.naver.com" in page.url or "login" in page.url:
                         await page.wait_for_timeout(2000)
-                    print("✨ [로그인 완료 확인] 자동화를 재개합니다!")
 
-                    await page.wait_for_timeout(2000)
-            except Exception:
-                # 로그인 창이 뜨지 않았거나 이미 로그인된 상태라면 에러 없이 통과
-                pass
+                    print(
+                        "🔄 [리디렉션 완료] 네이버가 디자이너 선택 화면으로 복귀시켰습니다."
+                    )
+                    print(
+                        "🚀 Playwright가 'select_designer' 노드로 돌아가 로직을 처음부터 재구행합니다!"
+                    )
+
+                    await select_designer_node(state)
+                    return await node_select_service(state)
+
+            except Exception as e:
+                print(f"로그인 자동화 처리 중 예외 발생: {e}")
 
             return {"current_step": "payment"}  # 다음 6단계(결제)로 전이
 

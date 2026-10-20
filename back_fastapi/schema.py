@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class BookingRequest(BaseModel):
+    user_id: int
     booking_id: int
     salon_name: str
     booking_date: str
@@ -9,6 +10,8 @@ class BookingRequest(BaseModel):
     designer_name: str
     menu_name: str
     payment_method: str
+    naver_id: str
+    naver_pw: str
 
 
 # LLM을 통해 정규화된 최종 에이전트 상태 스키마 (Playwright 입력용)

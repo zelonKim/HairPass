@@ -29,3 +29,26 @@ class SignupSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+
+#####################################################
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "favorite_salon",
+            "favorite_designer",
+            "favorite_menu",
+        )
+
+
+#####################################################
+
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username", "push_token", "naver_id", "naver_pw")
+        read_only_fields = ("id", "username")

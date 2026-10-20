@@ -6,7 +6,6 @@ import {
   Clock,
   CreditCard,
   MapPin,
-  RefreshCw,
   Scissors,
 } from "lucide-react-native";
 import React from "react";
@@ -190,20 +189,13 @@ export default function BookingsScreen() {
     <SafeAreaView style={styles.container}>
       {/* 헤더 영역 */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>내 예약 내역</Text>
-        <TouchableOpacity
-          onPress={() => refetch()}
-          activeOpacity={0.7}
-          style={styles.refreshButton}
-        >
-          <RefreshCw size={20} color={Colors.text} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>나의 예약 내역</Text>
       </View>
 
       {/* 로딩 상태 처리 */}
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.point} />
           <Text style={styles.loadingText}>예약 내역을 불러오는 중...</Text>
         </View>
       ) : isError ? (
@@ -226,12 +218,7 @@ export default function BookingsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              colors={[Colors.primary]}
-              tintColor={Colors.primary}
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

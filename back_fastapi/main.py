@@ -39,10 +39,10 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     )
     print(f" - 결제 수단:  {normalized_data.payment_method}")
     print("=" * 50 + "\n")
-    
-    
+
     # 2. Playwright 에이전트에 주입할 초기 상태(State) 구성
     initial_state: BookingState = {
+        "user_id": req.user_id,
         "salon_url": generated_salon_url,
         "target_date": normalized_data.target_date,
         "target_time": normalized_data.target_time,
@@ -50,6 +50,8 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
         "service_category": normalized_data.service_category,
         "service_detail": normalized_data.service_detail,
         "payment_method": normalized_data.payment_method,
+        "naver_id": req.naver_id,
+        "naver_pw": req.naver_pw,
         "current_step": "start",
         "error_message": None,
         "is_success": False,
