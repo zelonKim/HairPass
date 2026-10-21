@@ -17,11 +17,6 @@ async def run_booking_agent(initial_state: BookingState):
     user_id = initial_state.get("user_id", "default_user")
     user_data_dir = os.path.expanduser(f"~/.playwright_profiles/user_{user_id}")
 
-    naver_id = initial_state.get("naver_id")
-    naver_pw = initial_state.get("naver_pw")
-
-    print("🧾 네이버 계정:", naver_id, naver_pw)
-
     if os.path.exists(user_data_dir):
         try:
             shutil.rmtree(user_data_dir)

@@ -1,7 +1,7 @@
 import { client } from "@/api/client";
 import Colors from "@/constants/Colors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Scissors, Store, User } from "lucide-react-native";
+import { Heart, Scissors, Store, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -94,11 +94,17 @@ export default function FavoritesScreen() {
         >
           {/* 상단 헤더 */}
           <View style={styles.header}>
+            {/* 💡 하트 아이콘 + 즐겨찾기 타이틀 가로 묶음 */}
             <View style={styles.headerTitleRow}>
+              <Heart
+                size={24}
+                color={Colors.primary}
+                style={styles.titleIcon}
+              />
               <Text style={styles.headerTitle}>나의 즐겨찾기</Text>
             </View>
             <Text style={styles.headerSubtitle}>
-              즐겨찾기를 설정하면 기본 예약 정보로 등록됩니다.
+              즐겨찾기를 설정하면 기본 예약 정보로 등록돼요.
             </Text>
           </View>
 
@@ -216,8 +222,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: -0.5,
   },
+  titleIcon: {
+    marginRight: 6, // 아이콘과 글자 사이 간격
+    marginBottom: 2,
+  },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: Platform.OS === "ios" ? 14 : 13,
     color: Colors.subText,
     lineHeight: 18,
   },

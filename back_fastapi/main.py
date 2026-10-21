@@ -31,7 +31,7 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     print("\n" + "=" * 50)
     print("🤖 [AI 예약 정규화 결과]")
     print(
-        f" - 예약 날짜 & 시간: {normalized_data.target_date} & {normalized_data.target_time}"
+        f" - 예약 날짜 & 시간: {normalized_data.target_year_month}.{normalized_data.target_date} & {normalized_data.target_time}"
     )
     print(f" - 담당 디자이너: {normalized_data.designer_name}")
     print(
@@ -44,6 +44,7 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     initial_state: BookingState = {
         "user_id": req.user_id,
         "salon_url": generated_salon_url,
+        "target_year_month": normalized_data.target_year_month,
         "target_date": normalized_data.target_date,
         "target_time": normalized_data.target_time,
         "designer_name": normalized_data.designer_name,

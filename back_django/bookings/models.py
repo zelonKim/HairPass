@@ -6,8 +6,6 @@ class Booking(models.Model):
     class BookingStatus(models.TextChoices):
         PENDING = "PENDING", "예약 대기"
         CONFIRMED = "CONFIRMED", "예약 확정"
-        COMPLETED = "COMPLETED", "방문 완료"
-        CANCELLED = "CANCELLED", "예약 취소"
         FAILED = "FAILED", "예약 실패"
 
     class PaymentMethod(models.TextChoices):
@@ -29,8 +27,6 @@ class Booking(models.Model):
     booking_date = models.DateField(blank=True, null=True, verbose_name="예약 날짜")
 
     booking_time = models.TimeField(blank=True, null=True, verbose_name="예약 시간")
-
-
 
     designer_name = models.CharField(
         blank=True, null=True, max_length=50, verbose_name="담당 디자이너"
@@ -58,7 +54,7 @@ class Booking(models.Model):
     naver_booking_id = models.CharField(
         max_length=100, blank=True, null=True, verbose_name="네이버 예약번호"
     )
-    
+
     # 에이전트 자동화 실행 로그
     memo = models.TextField(blank=True, null=True, verbose_name="메모/로그")
 

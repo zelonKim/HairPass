@@ -4,6 +4,7 @@ from typing import Optional, TypedDict
 class BookingState(TypedDict):
     user_id: int
     salon_url: str  # 네이버 예약 URL
+    target_year_month: str
     target_date: str  # 목표 날짜 (예: "17")
     target_time: str  # 목표 시간 (예: "12:30")
     designer_name: str  # 선택할 디자이너 이름

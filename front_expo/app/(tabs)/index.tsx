@@ -1,8 +1,10 @@
 import { client } from "@/api/client";
+import { saveTokenToServer } from "@/api/saveTokenToServer";
 import Colors from "@/constants/Colors";
+import { registerForPushNotificationsAsync } from "@/utils/registerForPushNotificationsAsync";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Calendar, Clock } from "lucide-react-native";
+import { Calendar, Clock, Store } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FavoriteData } from "./favorites";
 import { UserProfile } from "./settings";
+import * as Notifications from "expo-notifications";
 
 interface CreateBookingPayload {
   salon_name: string;
@@ -86,6 +89,19 @@ const fetchFavorites = async (): Promise<FavoriteData> => {
   return response.data;
 };
 
+
+
+Notifications.setNotificationHandler({
+  handleNotification:
+    async (): Promise<Notifications.NotificationBehavior> => ({
+      shouldShowBanner: true,
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowList: true,
+    }),
+});
+
 export default function HomeScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -121,6 +137,14 @@ export default function HomeScreen() {
       setMenuName(data.favorite_menu || "");
     }
   }, [data]);
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        saveTokenToServer(token);
+      }
+    });
+  }, []);
 
   const handlePrevMonth = () => {
     if (isCurrentMonth) return;
@@ -193,7 +217,7 @@ export default function HomeScreen() {
           {
             text: "연동하기",
             onPress: () => {
-              router.push("/(auth)/naver-login");
+              router.push("/(auth)/naver-account");
             },
           },
         ],
@@ -217,10 +241,16 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>HairPass 예약 요청 💈</Text>
-        <Text style={styles.subtitle}>
-          AI 에이전트가 대신 미용실을 예약해 드립니다.
-        </Text>
+        <View style={styles.headerContainer}>
+          {/* 💡 아이콘과 타이틀을 가로 한 줄로 배치 */}
+          <View style={styles.titleRow}>
+            <Store size={24} color={Colors.primary} style={styles.titleIcon} />
+            <Text style={styles.title}>미용실 예약 요청</Text>
+          </View>
+          <Text style={styles.subtitle}>
+            AI 에이전트가 대신 미용실을 예약해 줄게요.
+          </Text>
+        </View>
 
         <View style={styles.formCard}>
           <Text style={styles.label}>미용실 이름</Text>
@@ -558,6 +588,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
   },
+  headerContainer: {
+    marginBottom: 10,
+  },
+  titleRow: {
+    flexDirection: "row", // 가로 정렬
+    alignItems: "center", // 아이콘과 텍스트의 수직 중앙 맞춤
+    marginBottom: 3,
+  },
+  titleIcon: {
+    marginRight: 8, // 아이콘과 타이틀 글자 사이 간격
+    marginBottom: 6,
+  },
   inputTouchField: {
     flexDirection: "row", // 👈 아이콘과 텍스트 가로 정렬
     alignItems: "center", // 👈 세로 중앙 정렬
@@ -591,13 +633,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     color: Colors.subText,
-    marginBottom: 20,
-    lineHeight: 20,
   },
   formCard: {
     backgroundColor: Colors.card,
+    marginTop: 12,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,

@@ -13,17 +13,22 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.point, // 활성화된 탭 색상 (원하는 액센트 컬러로 변경 가능)
         tabBarInactiveTintColor: "#8E8E93", // 비활성화된 탭 색상
         tabBarStyle: {
-          bottom: Platform.OS === "ios" ? "3%" : "5%",
+          bottom: Platform.OS === "ios" ? "4%" : "6%",
           paddingBottom: 5,
           paddingTop: 5,
           backgroundColor: Colors.card,
-          height: 65,
+          height: Platform.OS === "ios" ? 55 : 65,
           elevation: 0, // 안드로이드 기본 그림자(Elevation) 제거
           shadowOpacity: 0, // iOS 그림자 투명도 초기화
           shadowColor: "transparent", // iOS 그림자 색상 제거
         },
         headerTitleStyle: {
           fontWeight: "bold",
+        },
+        tabBarLabelStyle: {
+          fontSize: Platform.OS === "ios" ? 11.5 : 9, // 원하는 글자 크기 (기본값보다 작게 하려면 10~11, 크게 하려면 13~14)
+          fontWeight: "600", // 글자 두께 (예: 'normal', '500', 'bold')
+          marginTop: 2,
         },
       }}
     >

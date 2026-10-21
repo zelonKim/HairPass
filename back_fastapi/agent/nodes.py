@@ -57,32 +57,92 @@ def make_node_select_date_and_time(page: Page):
 
     async def node_select_date_and_time(state: BookingState):
         print(
-            f"👉 [Node] 날짜({state['target_date']}) 및 시간({state['target_time']}) 선택 중..."
+            f"✨ [Node] 날짜({state['target_year_month']}.{state['target_date']})"
+            f" 시간({state['target_time']}) 선택 중..."
         )
         try:
             iframe = page.frame_locator("iframe#entryIframe")
 
-            # 날짜 선택 (.last로 이번 달 날짜 정확히 타겟팅)
+            # -------------------------------------------------------------
+            # 💡 1. 목표 연/월과 현재 캘린더 연/월을 비교하여 다음 달 버튼 조절
+            # -------------------------------------------------------------
+            target_ym = state.get("target_year_month")
+
+            if target_ym:
+                for _ in range(12):  # 최대 12달 탐색
+                    print("📅 12달 탐색 시작!!")
+
+                    current_ym_element = iframe.locator(
+                        "div.ZDVM5 > strong.Acj85"
+                    ).first
+
+                    # 요소가 나타날 때까지 대기
+                    await current_ym_element.wait_for(state="visible", timeout=3000)
+
+                    current_ym = await current_ym_element.inner_text()
+                    current_ym = current_ym.strip()
+
+                    if current_ym == target_ym:
+                        print("✨ 목표 월에 도달했습니다!")
+                        break
+
+                    # 아직 목표 달이 아니라면 '다음 달' 버튼 클릭
+                    next_month_btn = iframe.locator(
+                        "div.ZDVM5 > a[data-nlog-area='plc_vtc.nextMonth']"
+                    ).first
+
+                    # 버튼이 화면에 보일 때까지 대기
+                    await next_month_btn.wait_for(state="visible", timeout=3000)
+
+                    is_disabled = await next_month_btn.get_attribute("aria-disabled")
+                    if is_disabled == "true":
+                        print("⚠️ 더 이상 이동할 수 있는 다음 달이 없습니다.")
+                        break
+
+                    # 💡 핵심: Playwright 기본 클릭 대신 자바스크립트 강제 클릭 실행
+                    print("▶️ 다음 달 버튼 JS 클릭 실행 중...", flush=True)
+                    await next_month_btn.evaluate("el => el.click()")
+
+                    # 캘린더가 갱신될 때까지 대기
+                    for _ in range(15):
+                        await page.wait_for_timeout(200)
+                        new_ym = await iframe.locator(
+                            "div.ZDVM5 > strong.Acj85"
+                        ).first.inner_text()
+                        if new_ym.strip() != current_ym:
+                            print(
+                                f"✨ 캘린더 월 변경 감지 성공: {new_ym.strip()}",
+                                flush=True,
+                            )
+                            break
+
+                    await page.wait_for_timeout(300)  # 안정화 대기
+
+            # -------------------------------------------------------------
+            # 2. 날짜 선택
+            # -------------------------------------------------------------
+            exact_date_pattern = re.compile(rf"^{state['target_date']}$")
             date_btn = (
                 iframe.locator("a[data-nlog-area='plc_vtc.caldate']")
-                .filter(has_text=state["target_date"])
-                .last
+                .filter(has_text=exact_date_pattern)
+                .first
             )
             await date_btn.click()
             await page.wait_for_timeout(1500)
 
-            # 시간 선택
+            # 3. 시간 선택
             time_btn = iframe.locator("a", has_text=state["target_time"]).first
             await time_btn.click()
             await page.wait_for_timeout(1000)
 
-            # 스타일리스트 검색 버튼 클릭
+            # 4. 스타일리스트 검색 버튼 클릭
             search_designer_btn = iframe.locator(
                 "a, button", has_text="스타일리스트 검색"
             ).first
             await search_designer_btn.click()
 
             return {"current_step": "select_designer"}
+
         except Exception as e:
             return {
                 "is_success": False,
@@ -139,8 +199,11 @@ def make_node_select_designer(page: Page):
 #######################################################################
 
 
-def make_node_select_service(page: Page):
+import json
+import re
 
+
+def make_node_select_service(page: Page):
     select_designer_node = make_node_select_designer(page)
 
     async def node_select_service(state: BookingState):
@@ -158,110 +221,132 @@ def make_node_select_service(page: Page):
             await category_btn.click()
             await page.wait_for_timeout(1000)
 
-            # 2. 상세 시술 메뉴 선택
-            menu_item = iframe.locator("li.option_item").filter(has_text=detail_menu)
-
+            # 2. 상세 시술 메뉴 선택 (정확히 일치하는 항목)
+            menu_item = (
+                iframe.locator("li.option_item").filter(has_text=detail_menu).first
+            )
             await menu_item.wait_for(state="visible", timeout=5000)
-            await menu_item.click()
-            await page.wait_for_timeout(1000)
+
+            # 💡 [핵심] 실제 input 체크박스의 DOM 상태를 직접 확인하여 중복 클릭(토글 해제) 원천 차단
+            checkbox_input = menu_item.locator("input[type='checkbox']")
+            is_already_checked = False
+            try:
+                if await checkbox_input.count() > 0:
+                    is_already_checked = await checkbox_input.is_checked()
+            except Exception:
+                pass
+
+            if is_already_checked:
+                print(
+                    f"✨ [중복 클릭 방지] '{detail_menu}' 시술이 이미 체크되어 있어"
+                    " 클릭을 스킵합니다.",
+                    flush=True,
+                )
+            else:
+                # 체크박스를 감싸고 있는 라벨 영역 클릭
+                click_target = menu_item.locator("label.option_checkbox")
+                if await click_target.count() == 0:
+                    click_target = menu_item
+
+                await click_target.click()
+                print(f"✨ 시술 메뉴 [{detail_menu}] 선택 완료!", flush=True)
+                await page.wait_for_timeout(1000)
 
             # 3. 하단 '다음 단계' 버튼 클릭
             next_btn = iframe.locator(
-                "button[data-nlog-area='bok_floating.proceedtobook'], button.NextButton__btn_next__4hAoO",
+                "button[data-nlog-area='bok_floating.proceedtobook'],"
+                " button.NextButton__btn_next__4hAoO",
                 has_text="다음",
             ).first
 
-            if await next_btn.count() > 0:
+            if await next_btn.count() > 0 and await next_btn.is_visible():
                 await next_btn.click()
-                print("🚀 ['다음 단계' 버튼 클릭 성공]")
+                print("🚀 ['다음 단계' 버튼 클릭 성공]", flush=True)
 
             await page.wait_for_timeout(1500)
 
-            # 💡 [여기!] 다음 단계로 넘어간 직후 로그인 창이 뜨는지 감지하는 안전장치 배치
+            # 로그인 감지 및 자동화 로직
             try:
-                ######## 로그인 자동화 로직 추가
-                await page.wait_for_timeout(1500)
+                await page.wait_for_timeout(3000)
                 if "nid.naver.com" in page.url or "login" in page.url:
                     print("\n" + "=" * 50)
                     print("⚠️ [보안 감지] 네이버 로그인 페이지로 이동되었습니다!")
                     print("👉 브라우저 창에서 직접 네이버 로그인을 완료해 주세요.")
                     print("👉 로그인이 완료되면 자동으로 다음 단계가 진행됩니다.")
-                    print("=" * 50 + "\n")
+                    print("=" * 50 + "\n", flush=True)
 
-                    # BookingState 등에서 전달받은 naver_id, naver_pw 가져오기
-                    # (예: state 딕셔너리 객체 혹은 변수명에 맞게 조정해 주세요)
                     naver_id = state.get("naver_id")
                     naver_pw = state.get("naver_pw")
 
                     if naver_id and naver_pw:
-                        # 1. 아이디 입력 (id="id" 또는 input[name="id"])
                         await page.wait_for_selector("#id", state="visible")
                         await page.click("#id")
-                        # 네이버는 한 번에 꽂아넣는 것보다 type이 안전합니다.
                         await page.type("#id", naver_id, delay=100)
 
-                        # 2. 비밀번호 입력 (id="pw" 또는 input[name="pw"])
                         await page.wait_for_selector("#pw", state="visible")
                         await page.click("#pw")
                         await page.type("#pw", naver_pw, delay=100)
 
-                        # 3. 로그인 버튼 클릭
                         await page.wait_for_selector("#loginBtn_row", state="visible")
                         await page.click("#loginBtn_row")
                         print(
-                            "✨ [자동 로그인] 계정 정보 입력 및 로그인 버튼 클릭 완료!"
+                            "✨ [자동 로그인] 계정 정보 입력 및 로그인 버튼 클릭 완료!",
+                            flush=True,
                         )
                     else:
                         print(
-                            "❌ [오류] 에이전트 상태에 네이버 계정 정보(naver_id/naver_pw)가 없습니다."
+                            "❌ [오류] 에이전트 상태에 네이버 계정 정보(naver_id/naver_pw)가"
+                            " 없습니다.",
+                            flush=True,
                         )
 
-                    # 사용자가 로그인을 완료하여 로그인 창이 사라질 때까지 대기
                     while "nid.naver.com" in page.url or "login" in page.url:
                         await page.wait_for_timeout(2000)
 
                     print(
-                        "🔄 [리디렉션 완료] 네이버가 디자이너 선택 화면으로 복귀시켰습니다."
+                        "🔄 [리디렉션 완료] 네이버가 디자이너 선택 화면으로 복귀시켰습니다.",
+                        flush=True,
                     )
                     print(
-                        "🚀 Playwright가 'select_designer' 노드로 돌아가 로직을 처음부터 재구행합니다!"
+                        "🚀 Playwright가 'select_designer' 노드로 돌아가 로직을 처음부터"
+                        " 재실행합니다!",
+                        flush=True,
                     )
 
                     await select_designer_node(state)
                     return await node_select_service(state)
 
             except Exception as e:
-                print(f"로그인 자동화 처리 중 예외 발생: {e}")
+                print(f"로그인 자동화 처리 중 예외 발생: {e}", flush=True)
 
-            return {"current_step": "payment"}  # 다음 6단계(결제)로 전이
+            return {"current_step": "payment"}
 
         except Exception as e:
-            print(f"❌ [시술 메뉴 선택 실패]: {e}")
+            print(f"❌ [시술 메뉴 선택 실패]: {e}", flush=True)
             print(
-                "🤖 [Self-Healing] 화면 내 시술 목록을 긁어와 AI로 올바른 명칭을 매칭합니다."
+                "🤖 [Self-Healing] 화면 내 시술 목록을 긁어와 AI로 올바른 명칭을"
+                " 매칭합니다.",
+                flush=True,
             )
 
             try:
                 iframe = page.frame_locator("iframe#entryIframe")
 
-                # 1. 현재 화면(iframe)의 모든 시술 항목 텍스트 긁어오기
                 option_elements = await iframe.locator(
                     "li.option_item"
                 ).all_inner_texts()
 
-                # 텍스트 정제 (줄바꿈 제거 및 빈 값 제외)
                 available_options = [
                     opt.replace("\n", " ").strip()
                     for opt in option_elements
                     if opt.strip()
                 ]
 
-                print(available_options)
+                print(available_options, flush=True)
 
                 if not available_options:
                     raise Exception("화면에서 선택 가능한 시술 옵션을 찾지 못했습니다.")
 
-                # 2. LLM에게 원래 요구사항과 실제 화면 목록을 주고 정확한 메뉴명 재추출
                 prompt = f"""
                     사용자가 원래 원한 메뉴: "{detail_menu}"
                     현재 화면의 실제 전체 메뉴 목록:
@@ -269,10 +354,10 @@ def make_node_select_service(page: Page):
 
                     [지침]
                     - 위 목록 중에서 사용자가 원하는 메뉴와 가장 잘 일치하는 항목을 찾으세요.
-                    - 단, 가격이나 긴 설명글을 제외하고, 검색에 사용할 수 있는 **대표 메뉴 이름 핵심 단어(예: "남성커트", "여성커트", "컷+다운펌")** 만 짧게 추출하세요.
+                    - 단, 가격이나 긴 설명글을 제외하고, 검색에 사용할 수 있는 **대표 메뉴 이름 핵심 단어(예: "힐링스파 컷", "수분촉촉 찰랑컷")** 만 짧게 추출하세요.
 
                     응답 포맷 (JSON):
-                    {{"matched_keyword": "남성커트"}}
+                    {{"matched_keyword": "힐링스파 컷"}}
                 """
 
                 response = client.chat.completions.create(
@@ -284,39 +369,53 @@ def make_node_select_service(page: Page):
                 result = json.loads(response.choices[0].message.content or "{}")
                 corrected_keyword = result.get("matched_keyword")
 
-                print(f"✨ [AI 매칭 결과]: '{detail_menu}' ➔ '{corrected_keyword}'")
+                print(
+                    f"✨ [AI 매칭 결과]: '{detail_menu}' ➔ '{corrected_keyword}'",
+                    flush=True,
+                )
 
                 if corrected_keyword:
                     escaped_keyword = re.escape(corrected_keyword.strip())
                     flexible_pattern = re.compile(r"\s*".join(escaped_keyword.split()))
 
-                    # 정규식 패턴(re.compile)을 사용하여 텍스트 필터링
                     retry_item = (
                         iframe.locator("li.option_item")
                         .filter(has_text=flexible_pattern)
                         .first
                     )
                     await retry_item.wait_for(state="visible", timeout=4000)
-                    await retry_item.click()
+
+                    # Self-Healing에서도 체크박스 상태 확인 후 클릭
+                    retry_checkbox = retry_item.locator("input[type='checkbox']")
+                    if (
+                        await retry_checkbox.count() > 0
+                        and await retry_checkbox.is_checked()
+                    ):
+                        print("✨ 이미 체크되어 있어 Self-Healing 클릭을 스킵합니다.")
+                    else:
+                        retry_target = retry_item.locator("label.option_checkbox")
+                        if await retry_target.count() == 0:
+                            retry_target = retry_item
+                        await retry_target.click()
+
                     await page.wait_for_timeout(1000)
 
-                    # 하단 '다음' 버튼 클릭
                     next_btn = iframe.locator(
-                        "button[data-nlog-area='bok_floating.proceedtobook'], button.NextButton__btn_next__4hAoO",
+                        "button[data-nlog-area='bok_floating.proceedtobook'],"
+                        " button.NextButton__btn_next__4hAoO",
                         has_text="다음",
                     ).first
                     if await next_btn.count() > 0:
                         await next_btn.click()
 
                     return {
-                        "service_detail": corrected_keyword,  # state 갱신
+                        "service_detail": corrected_keyword,
                         "current_step": "payment",
                     }
 
             except Exception as healing_error:
-                print(f"❌ [Self-Healing 복구 실패]: {healing_error}")
+                print(f"❌ [Self-Healing 복구 실패]: {healing_error}", flush=True)
 
-            # 최종 실패 시 에러 상태 반환
             return {
                 "is_success": False,
                 "error_message": str(e),

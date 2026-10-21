@@ -6,7 +6,8 @@ from .views import (
     UserInfoView,
     WithdrawView,
     NaverCookieView,
-    NaverAccountView
+    NaverAccountView,
+    PushTokenView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path("withdraw/", WithdrawView.as_view(), name="withdraw"),
     path("naver-cookie/", NaverCookieView.as_view(), name="naver-cookie"),
     path("naver-account/", NaverAccountView.as_view(), name="naver-account"),
+    path("push-token/", PushTokenView.as_view(), name="push-token"),
 ]

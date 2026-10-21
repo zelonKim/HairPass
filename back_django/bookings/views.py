@@ -7,6 +7,8 @@ from .serializers import BookingSerializer
 from rest_framework.permissions import AllowAny
 import os
 from dotenv import load_dotenv
+from utils.notification import send_expo_push_notification
+
 
 load_dotenv()
 
@@ -121,27 +123,54 @@ class BookingDetailDeleteView(generics.DestroyAPIView):
 ###############################################################################
 
 
-class BookingSuccessUpdateView(generics.UpdateAPIView):
+class BookingFinishView(generics.UpdateAPIView):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
 
     def get_object(self):
-        # Body로 전달받은 booking_id로 DB 객체 조회
         booking_id = self.request.data.get("booking_id")
         return generics.get_object_or_404(Booking, id=booking_id)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-
-        # FastAPI에서 넘어온 데이터 매핑
         data = request.data.copy()
 
+        # FastAPI에서 전달된 에러 메시지가 있을 경우 memo 필드에 저장
         if "error_message" in data:
             data["memo"] = data.get("error_message")
 
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+
+        # ---------------------------------------------------------
+        # 💡 유저 푸시 알림 발송
+        # ---------------------------------------------------------
+        user = instance.user  # Booking 모델의 Foreign Key 유저
+        booking_status = data.get("status")  # "CONFIRMED" 또는 "FAILED"
+        salon_name = instance.salon_name or "요청한 미용실"
+
+        if user and user.push_token:  # 푸시 토큰이 존재하는 경우에만 발송
+            print("💈 예약 상태:", booking_status)
+            
+            if booking_status == "CONFIRMED":
+                title = "예약 성공 ✅"
+                body = f"[{salon_name}] 예약에 성공했습니다."
+            else:
+                title = "예약 실패 ⚠️"
+                body = f"[{salon_name}] 예약에 실패했습니다."
+
+            # 푸시 알림 전송 실행
+            send_expo_push_notification(
+                push_token=user.push_token,
+                title=title,
+                body=body,
+                data={
+                    "bookingId": instance.id,
+                    "status": booking_status,
+                    "url": "/(tabs)/bookings",  # 앱 내부 이동 딥링크
+                },
+            )
 
         return Response(
             {

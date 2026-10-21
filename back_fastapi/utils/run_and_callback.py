@@ -14,9 +14,9 @@ async def run_and_callback(initial_state: BookingState, booking_id: int):
 
     # 2. 결과 판정
     # result에 최종적으로 확정된 데이터(메뉴, 날짜, 상태 등)가 들어있음
-    is_success = result.get("is_success", True)
+    is_success = result.get("is_success")
 
-    django_callback_url = f"{os.getenv('DJANGO_BASE_URL')}/api/bookings/success-update/"
+    django_callback_url = f"{os.getenv('DJANGO_BASE_URL')}/api/bookings/finish/"
 
     callback_data = {
         "booking_id": booking_id,

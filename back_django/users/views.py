@@ -6,9 +6,13 @@ from rest_framework.authtoken.models import Token
 from .serializers import SignupSerializer, LoginSerializer
 from rest_framework.permissions import IsAuthenticated
 from .serializers import FavoriteSerializer, UserInfoSerializer
+from rest_framework.permissions import AllowAny
 
 
 class SignupView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
 
@@ -30,6 +34,9 @@ class SignupView(APIView):
 
 
 class LoginView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -226,5 +233,44 @@ class NaverAccountView(APIView):
 
         return Response(
             {"message": "네이버 계정 연동이 해제되었습니다."},
+            status=status.HTTP_200_OK,
+        )
+
+
+####################################################################
+
+
+class PushTokenView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def patch(self, request):
+        push_token = request.data.get("push_token")
+
+        if not push_token:
+            return Response(
+                {"error": "pushToken이 제공되지 않았습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 현재 로그인한 유저의 푸시 토큰 업데이트
+        user = request.user
+        user.push_token = push_token
+        user.save()
+
+        return Response(
+            {
+                "message": "푸시 토큰이 성공적으로 저장되었습니다.",
+                "pushToken": user.push_token,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request):
+        user = request.user
+        user.push_token = None 
+        user.save()
+
+        return Response(
+            {"message": "푸시 토큰이 성공적으로 삭제되었습니다."},
             status=status.HTTP_200_OK,
         )

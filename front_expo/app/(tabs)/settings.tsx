@@ -1,6 +1,8 @@
 import { client } from "@/api/client";
 import Colors from "@/constants/Colors";
+import { handleTogglePush } from "@/utils/handleTogglePush";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -10,13 +12,14 @@ import {
   Link2,
   LogOut,
   ShieldCheck,
-  User as UserIcon,
+  User,
   UserX,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -53,6 +56,14 @@ export default function SettingsScreen() {
   // 푸시 알림 토글 상태 (로컬 스토어 등과 연동 가능)
   const [pushEnabled, setPushEnabled] = useState<boolean>();
 
+  useEffect(() => {
+    const checkNotificationPermission = async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      setPushEnabled(status === "granted");
+    };
+
+    checkNotificationPermission();
+  }, []);
   // 1. 유저 정보 조회 (username 표시용)
   const { data: userInfo, isLoading } = useQuery<UserProfile>({
     queryKey: ["userInfo"],
@@ -66,7 +77,7 @@ export default function SettingsScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["userInfo"] });
-      router.push("/(auth)/naver-login");
+      router.push("/(auth)/naver-account");
     },
     onError: (error) => {
       console.error("네이버 연동 해제 실패:", error);
@@ -92,8 +103,7 @@ export default function SettingsScreen() {
         ],
       );
     } else {
-      // 연동된 적이 없다면 곧바로 로그인 페이지로 이동
-      router.push("/(auth)/naver-login");
+      router.push("/(auth)/naver-account");
     }
   };
 
@@ -156,15 +166,20 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* 상단 헤더 타이틀 */}
-        <Text style={styles.headerTitle}>나의 설정</Text>
+        <View style={styles.headerContainer}>
+          {/* 💡 설정 아이콘 + 타이틀 가로 묶음 */}
+          <View style={styles.titleRow}>
+            <Text style={styles.headerTitle}>나의 설정</Text>
+          </View>
+        </View>
 
         {/* 1. 유저 프로필 카드 */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <UserIcon size={28} color={Colors.primary} />
+            <User size={25} color={Colors.primary} style={styles.titleIcon} />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userLabel}>로그인 계정</Text>
+            <Text style={styles.userLabel}>접속중인 계정</Text>
             {isLoading ? (
               <ActivityIndicator
                 size="small"
@@ -184,14 +199,15 @@ export default function SettingsScreen() {
         <View style={styles.menuGroup}>
           <View style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Bell size={20} color={Colors.subText} style={styles.menuIcon} />
+              <Bell size={20} color={Colors.warning} style={styles.menuIcon} />
               <Text style={styles.menuText}>푸시 알림 수신</Text>
             </View>
             <Switch
               value={pushEnabled}
-              onValueChange={setPushEnabled}
-              trackColor={{ false: Colors.border, true: Colors.primary }}
-              thumbColor="#FFFFFF"
+              onValueChange={(val) => handleTogglePush(val, setPushEnabled)}
+              trackColor={{ false: Colors.muted, true: Colors.point }}
+              thumbColor={Platform.OS === "android" ? "#FFFFFF" : undefined}
+              ios_backgroundColor="#E0E0E0"
             />
           </View>
           <View style={styles.separator} />
@@ -308,12 +324,23 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  headerContainer: {
+    marginBottom: 16,
+  },
+  titleRow: {
+    flexDirection: "row", // 아이콘과 글자 가로 정렬
+    alignItems: "center", // 수직 중앙 맞춤
+  },
+  titleIcon: {
+    marginRight: 6, // 아이콘과 '나의 설정' 글자 사이 간격
+    marginLeft: 6,
+  },
+
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "800",
     color: Colors.text,
     letterSpacing: -0.5,
-    marginBottom: 20,
   },
   profileCard: {
     flexDirection: "row",
@@ -338,6 +365,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
+  },
+  logoImage: {
+    width: "110%",
+    height: "110%",
+    borderRadius: 48,
   },
   userInfo: {
     flex: 1,

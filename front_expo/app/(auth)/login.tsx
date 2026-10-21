@@ -3,7 +3,7 @@ import { setAccessToken } from "@/api/token";
 import Colors from "@/constants/Colors";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Lock, Mail } from "lucide-react-native";
+import { Lock, UserRound } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -44,11 +44,8 @@ export default function LoginScreen() {
       }
       router.replace("/(tabs)");
     },
-    onError: (error: any) => {
-      const errorMsg =
-        error.response?.data?.error ||
-        error.response?.data?.detail ||
-        "아이디 또는 비밀번호가 올바르지 않습니다.";
+    onError: () => {
+      const errorMsg = "아이디 혹은 비밀번호가 올바르지 않습니다.";
       Alert.alert("로그인 실패", errorMsg);
     },
   });
@@ -85,33 +82,38 @@ export default function LoginScreen() {
               />
             </View>
             <Text style={styles.title}>HairPass</Text>
-            <Text style={styles.subtitle}>나를 위한 미용실 자동 예약 비서</Text>
+            <Text style={styles.subtitle}>
+              나를 위한 미용실 자동 예약 에이전트
+            </Text>
           </View>
 
           {/* 📝 2. 로그인 폼 카드 */}
           <View style={styles.formCard}>
-            <Text style={styles.label}>이메일</Text>
+            <Text style={styles.label}>아이디</Text>
             <View style={styles.inputContainer}>
-              <Mail size={18} color={Colors.subText} style={styles.inputIcon} />
+              <UserRound
+                size={18}
+                color={Colors.subText}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="example@naver.com"
+                placeholder="아이디를 입력해주세요."
                 placeholderTextColor={Colors.muted}
-                keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
 
-            <Text style={styles.label}>비밀번호</Text>
+            <Text style={[styles.label, { marginTop: 24 }]}>비밀번호</Text>
             <View style={styles.inputContainer}>
               <Lock size={18} color={Colors.subText} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="비밀번호를 입력하세요"
+                placeholder="비밀번호를 입력해주세요."
                 placeholderTextColor={Colors.muted}
                 autoCapitalize="none"
                 secureTextEntry
@@ -141,44 +143,6 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* 🤝 3. 소셜 로그인 (네이버 + 애플) */}
-          <View style={styles.socialSection}>
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>간편 로그인</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.socialButtonsContainer}>
-              {/* 네이버 로그인 */}
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: "#03C75A" }]}
-                onPress={() =>
-                  Alert.alert("알림", "네이버 로그인 준비 중입니다.")
-                }
-                activeOpacity={0.85}
-              >
-                <Text style={styles.naverText}>N</Text>
-                <Text style={styles.socialButtonText}>네이버로 로그인하기</Text>
-              </TouchableOpacity>
-
-              {Platform.OS === "ios" && (
-                <TouchableOpacity
-                  style={[styles.socialButton, { backgroundColor: "#000000" }]}
-                  onPress={() =>
-                    Alert.alert("알림", "Apple 로그인 준비 중입니다.")
-                  }
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.appleText}></Text>
-                  <Text style={styles.socialButtonText}>
-                    Apple로 로그인하기
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -194,7 +158,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: Colors.subText,
-    marginTop: 12,
+    marginTop: 10,
     marginBottom: 6,
   },
   // 입력창을 감싸는 컨테이너 (가로 배치)
@@ -218,7 +182,8 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    justifyContent: "center",
+    marginTop: 48,
+    justifyContent: "flex-start",
     flexGrow: 1,
   },
   headerContainer: {
@@ -229,23 +194,23 @@ const styles = StyleSheet.create({
   logoCard: {
     width: 92,
     height: 92,
-    borderRadius: 24,
-    backgroundColor: Colors.background,
+    borderRadius: 48,
+
     padding: 5,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     // 입체감 있는 그림자
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
+    shadowColor: Colors.point,
+    shadowOffset: { width: 4, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     elevation: 6,
   },
   logoImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 20,
+    width: "110%",
+    height: "110%",
+    borderRadius: 48,
   },
   title: {
     fontSize: 26,
@@ -254,12 +219,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: "center",
     letterSpacing: -0.5,
+    shadowColor: Colors.point,
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: Platform.OS === "ios" ? 13 : 12.5,
     color: Colors.subText,
     textAlign: "center",
-    marginBottom: 16,
+    marginTop: 2,
   },
   /* 배지 스타일 */
   badgeContainer: {
@@ -283,7 +252,8 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: Colors.card,
     borderRadius: 22,
-    padding: 22,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     borderWidth: 1,
     borderColor: Colors.border,
     shadowColor: "#000",
@@ -291,6 +261,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 12,
     elevation: 1,
+    marginTop: 12,
   },
 
   submitButton: {
@@ -298,7 +269,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 28,
   },
   submitButtonText: {
     color: "#fff",
@@ -310,7 +281,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   linkText: {
-    fontSize: 13,
+    fontSize: Platform.OS === "ios" ? 13 : 12.5,
+    marginTop: 8,
+    marginBottom: 4,
     color: Colors.subText,
   },
   linkHighlight: {
@@ -369,5 +342,62 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  infoBox: {
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    alignItems: "flex-start",
+  },
+  infoTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#212529",
+    marginBottom: 4,
+  },
+  infoDescription: {
+    fontSize: 12,
+    color: "#868E96",
+    lineHeight: 18,
+  },
+  guideCard: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+  },
+  guideSection: {
+    paddingVertical: 2,
+  },
+  guideTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  guideSectionTitle: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#212529",
+    marginLeft: 6,
+  },
+  guideText: {
+    fontSize: 12,
+    color: "#495057",
+    lineHeight: 18,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E9ECEF",
+    marginVertical: 12,
   },
 });

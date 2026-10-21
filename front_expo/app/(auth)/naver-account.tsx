@@ -22,7 +22,7 @@ interface NaverAccountData {
   naver_pw: string;
 }
 
-export default function NaverLoginScreen() {
+export default function NaverAccountScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -93,6 +93,17 @@ export default function NaverLoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.content}
       >
+        {/* 💡 화면 좌측 상단에 위치하는 뒤로가기 버튼 */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#35455b" />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.headerContainer}>
           <Text style={styles.title}>네이버 계정 연동</Text>
           <Text style={styles.subtitle}>
@@ -243,5 +254,18 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  topBar: {
+    width: "100%",
+    alignItems: "flex-start",
+    position: "absolute",
+    top: 12,
+    left: 20,
+    marginBottom: 4, // 타이틀과의 간격 조절
+  },
+  backButton: {
+    padding: 4, // 터치 영역은 넓히면서 좌측에 밀착
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

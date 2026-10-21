@@ -3,7 +3,7 @@ import { setAccessToken } from "@/api/token";
 import Colors from "@/constants/Colors";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Lock, Mail } from "lucide-react-native";
+import { Lock, UserRound } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -80,7 +80,7 @@ export default function SignupScreen() {
   const handleSignup = () => {
     // 유효성 검사
     if (!username.trim()) {
-      Alert.alert("알림", "이메일을 입력해 주세요.");
+      Alert.alert("알림", "아이디를 입력해 주세요.");
       return;
     }
     if (!password) {
@@ -110,27 +110,30 @@ export default function SignupScreen() {
         >
           {/* 🌟 1. 상단 로고 & 헤더 */}
           <View style={styles.headerContainer}>
-            <Text style={styles.title}>회원가입 💈</Text>
+            <Text style={styles.title}>환영합니다💈</Text>
             <Text style={styles.subtitle}>
-              가입하고 편리한 미용실 예약을 시작해보세요.
+              앞으로 미용실 예약은 헤어패스에 맡겨요.
             </Text>
           </View>
 
           {/* 📝 2. 회원가입 폼 카드 */}
           <View style={styles.formCard}>
-            <Text style={styles.sectionHeaderTitle}>계정 입력 정보</Text>
+            <Text style={styles.sectionHeaderTitle}>가입 정보 입력</Text>
 
             {/* 이메일 (아이디) */}
-            <Text style={styles.label}>이메일</Text>
+            <Text style={styles.label}>아이디</Text>
             <View style={styles.inputContainer}>
-              <Mail size={18} color={Colors.subText} style={styles.inputIcon} />
+              <UserRound
+                size={18}
+                color={Colors.subText}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
-                value={username}
+                value={username} 
                 onChangeText={setUsername}
-                placeholder="example@naver.com"
+                placeholder="아이디를 입력해주세요."
                 placeholderTextColor={Colors.muted}
-                keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
@@ -143,7 +146,7 @@ export default function SignupScreen() {
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="비밀번호를 입력하세요"
+                placeholder="비밀번호를 입력해주세요."
                 placeholderTextColor={Colors.muted}
                 autoCapitalize="none"
                 secureTextEntry
@@ -158,7 +161,7 @@ export default function SignupScreen() {
                 style={styles.input}
                 value={passwordConfirm}
                 onChangeText={setPasswordConfirm}
-                placeholder="비밀번호를 한번 더 입력하세요"
+                placeholder="비밀번호를 다시 입력해주세요."
                 placeholderTextColor={Colors.muted}
                 autoCapitalize="none"
                 secureTextEntry
@@ -203,7 +206,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingBottom: 40,
+    paddingTop: 60,
     justifyContent: "center",
   },
   headerContainer: {
@@ -255,7 +258,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: 1,
   },
   sectionHeaderTitle: {
     fontSize: 16,
@@ -296,7 +299,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingVertical: 13,
-    fontSize: 14,
+    fontSize: Platform.OS === "ios" ? 14 : 13.5,
     color: Colors.text,
   },
   submitButton: {
@@ -312,8 +315,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   linkButton: {
-    marginTop: 16,
+    marginTop: 24,
     alignItems: "center",
+    marginBottom: 3,
   },
   linkText: {
     fontSize: 13,
