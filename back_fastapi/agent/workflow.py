@@ -13,7 +13,6 @@ import shutil
 
 
 async def run_booking_agent(initial_state: BookingState):
-    # 사용자별 고유 폴더로 세션 분리
     user_id = initial_state.get("user_id", "default_user")
     user_data_dir = os.path.expanduser(f"~/.playwright_profiles/user_{user_id}")
 

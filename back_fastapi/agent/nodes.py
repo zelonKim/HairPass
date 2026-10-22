@@ -121,12 +121,21 @@ def make_node_select_date_and_time(page: Page):
             # -------------------------------------------------------------
             # 2. 날짜 선택
             # -------------------------------------------------------------
+
             exact_date_pattern = re.compile(rf"^{state['target_date']}$")
+
+            await page.wait_for_timeout(3000)
+
             date_btn = (
-                iframe.locator("a[data-nlog-area='plc_vtc.caldate']")
+                iframe.locator(
+                    "a[data-nlog-area='plc_vtc.caldate']:not([aria-disabled='true'])"
+                )
                 .filter(has_text=exact_date_pattern)
                 .first
             )
+
+            # 버튼이 화면에 완전히 나타날 때까지 대기 후 클릭
+            await date_btn.wait_for(state="visible", timeout=3000)
             await date_btn.click()
             await page.wait_for_timeout(1500)
 
@@ -197,10 +206,6 @@ def make_node_select_designer(page: Page):
 
 
 #######################################################################
-
-
-import json
-import re
 
 
 def make_node_select_service(page: Page):

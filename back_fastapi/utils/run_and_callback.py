@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# 백그라운드에서 실행될 에이전트 구동 및 상태 콜백 함수
 async def run_and_callback(initial_state: BookingState, booking_id: int):
     # 1. Playwright 에이전트 실행 (LangGraph)
     result = await run_booking_agent(initial_state)
