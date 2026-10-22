@@ -1,11 +1,12 @@
-import { client } from "@/api/client";
+import { getFavorites } from "@/api/favorite/getFavorites";
 import Colors from "@/constants/Colors";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUpdateFavorites } from "@/hooks/favorite/useUpdateFavorites";
+import { FavoriteData } from "@/types/favorite/FavoriteData";
+import { useQuery } from "@tanstack/react-query";
 import { Heart, Scissors, Store, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,39 +18,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// 1. 선호 정보 데이터 타입 정의
-export interface FavoriteData {
-  favorite_salon: string;
-  favorite_designer: string;
-  favorite_menu: string;
-}
-
-// 2. API 호출 함수
-const fetchFavorites = async (): Promise<FavoriteData> => {
-  const response = await client.get("/api/users/favorite/");
-  return response.data;
-};
-
-const updateFavorites = async (data: Partial<FavoriteData>) => {
-  const response = await client.patch("/api/users/favorite/", data);
-  return response.data;
-};
-
 export default function FavoritesScreen() {
-  const queryClient = useQueryClient();
-
-  // 폼 입력 상태
   const [favoriteSalon, setFavoriteSalon] = useState("");
   const [favoriteDesigner, setFavoriteDesigner] = useState("");
   const [favoriteMenu, setFavoriteMenu] = useState("");
 
-  // 3. TanStack Query: 선호 정보 조회 (GET)
-  const { data, isLoading, isError, refetch } = useQuery<FavoriteData>({
+  /////////////////////////////////////////////////////////////////////
+
+  const { data, isPending, isError, refetch } = useQuery<FavoriteData>({
     queryKey: ["favorites"],
-    queryFn: fetchFavorites,
+    queryFn: getFavorites,
   });
 
-  // 조회된 데이터를 로컬 입력 상태와 동기화
   useEffect(() => {
     if (data) {
       setFavoriteSalon(data.favorite_salon || "");
@@ -58,21 +38,10 @@ export default function FavoritesScreen() {
     }
   }, [data]);
 
-  // 4. TanStack Query: 선호 정보 수정 (PATCH)
+  /////////////////////////////////////////////////////////////////////
+
   const { mutate: favUpdateMutation, isPending: favUpdatePending } =
-    useMutation({
-      mutationFn: updateFavorites,
-      onSuccess: (res) => {
-        // 캐시 갱신
-        queryClient.invalidateQueries({ queryKey: ["favorites"] });
-        Alert.alert("저장 완료 ⭐️", "즐겨찾기가 저장되었습니다!");
-      },
-      onError: (error: any) => {
-        const errorMsg =
-          error.response?.data?.detail || "선호 정보 수정에 실패했습니다.";
-        Alert.alert("오류", errorMsg);
-      },
-    });
+    useUpdateFavorites();
 
   const handleSave = () => {
     favUpdateMutation({
@@ -81,6 +50,8 @@ export default function FavoritesScreen() {
       favorite_menu: favoriteMenu.trim(),
     });
   };
+
+  /////////////////////////////////////////////////////////////////////
 
   return (
     <SafeAreaView style={styles.container}>
@@ -92,9 +63,7 @@ export default function FavoritesScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* 상단 헤더 */}
           <View style={styles.header}>
-            {/* 💡 하트 아이콘 + 즐겨찾기 타이틀 가로 묶음 */}
             <View style={styles.headerTitleRow}>
               <Heart
                 size={24}
@@ -108,8 +77,7 @@ export default function FavoritesScreen() {
             </Text>
           </View>
 
-          {/* 로딩 상태 */}
-          {isLoading ? (
+          {isPending ? (
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={Colors.primary} />
               <Text style={styles.loadingText}>선호 정보를 불러오는 중...</Text>
@@ -125,9 +93,7 @@ export default function FavoritesScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            /* 폼 카드 */
             <View style={styles.formCard}>
-              {/* 1. 단골 미용실 */}
               <Text style={styles.label}>단골 미용실</Text>
               <View style={styles.inputContainer}>
                 <Store
@@ -144,7 +110,6 @@ export default function FavoritesScreen() {
                 />
               </View>
 
-              {/* 2. 선호 디자이너 */}
               <Text style={styles.label}>선호 디자이너</Text>
               <View style={styles.inputContainer}>
                 <User
@@ -178,7 +143,6 @@ export default function FavoritesScreen() {
                 />
               </View>
 
-              {/* 저장 버튼 */}
               <TouchableOpacity
                 style={styles.saveButton}
                 onPress={handleSave}
@@ -198,6 +162,8 @@ export default function FavoritesScreen() {
     </SafeAreaView>
   );
 }
+
+/////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   container: {
@@ -223,7 +189,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   titleIcon: {
-    marginRight: 6, // 아이콘과 글자 사이 간격
+    marginRight: 6,
     marginBottom: 2,
   },
   headerSubtitle: {

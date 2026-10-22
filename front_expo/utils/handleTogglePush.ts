@@ -1,5 +1,5 @@
-import { deleteTokenFromServer } from "@/api/deleteTokenFromServer";
-import { saveTokenToServer } from "@/api/saveTokenToServer";
+import { deleteTokenFromServer } from "@/api/common/deleteTokenFromServer";
+import { saveTokenToServer } from "@/api/common/saveTokenToServer";
 import * as Notifications from "expo-notifications";
 import { Alert, Linking } from "react-native";
 import { registerForPushNotificationsAsync } from "./registerForPushNotificationsAsync";

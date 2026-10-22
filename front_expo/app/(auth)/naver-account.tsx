@@ -1,11 +1,12 @@
-import { client } from "@/api/client";
+import { getNaverAccount } from "@/api/auth/getNaverAccount";
 import Colors from "@/constants/Colors";
+import { useNaverAccountMutation } from "@/hooks/auth/useNaverAccountMutation";
+import { NaverAccountData } from "@/types/auth/NaverAccountData";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -16,31 +17,21 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// 네이버 계정 데이터 타입 정의
-interface NaverAccountData {
-  naver_id: string;
-  naver_pw: string;
-}
-
 export default function NaverAccountScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [naverId, setNaverId] = useState("");
   const [naverPw, setNaverPw] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // 1. useQuery를 이용한 네이버 계정 정보 조회
+  /////////////////////////////////////////////////////////////////////
+
   const { data: accountData, isLoading: isFetching } =
     useQuery<NaverAccountData>({
       queryKey: ["naverAccount"],
-      queryFn: async () => {
-        const response = await client.get("/api/users/naver-account/");
-        return response.data;
-      },
+      queryFn: getNaverAccount,
     });
 
-  // 서버에서 불러온 데이터를 input 상태에 동기화
   useEffect(() => {
     if (accountData) {
       if (accountData.naver_id) setNaverId(accountData.naver_id);
@@ -48,44 +39,19 @@ export default function NaverAccountScreen() {
     }
   }, [accountData]);
 
-  // 2. useMutation을 이용한 네이버 계정 정보 수정/저장
-  const mutation = useMutation({
-    mutationFn: async (payload: NaverAccountData) => {
-      const response = await client.patch("/api/users/naver-account/", payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      // 관련 쿼리 무효화 및 갱신
-      queryClient.invalidateQueries({ queryKey: ["naverAccount"] });
-      queryClient.invalidateQueries({ queryKey: ["userInfo"] });
+  /////////////////////////////////////////////////////////////////////
 
-      Alert.alert("성공", "네이버 계정 정보가 연동되었습니다!", [
-        {
-          text: "확인",
-          onPress: () => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/(tabs)");
-            }
-          },
-        },
-      ]);
-    },
-    onError: (error) => {
-      console.error("네이버 계정 저장 실패:", error);
-      Alert.alert("오류", "계정 정보 저장 중 문제가 발생했습니다.");
-    },
-  });
+  const { mutate: NaverAccountMutation, isPending: NaverAccountPending } =
+    useNaverAccountMutation();
 
   const handleSaveAccount = () => {
-    mutation.mutate({
+    NaverAccountMutation({
       naver_id: naverId.trim(),
       naver_pw: naverPw.trim(),
     });
   };
 
-  const isLoading = mutation.isPending;
+  /////////////////////////////////////////////////////////////////////
 
   return (
     <SafeAreaView style={styles.container}>
@@ -155,13 +121,13 @@ export default function NaverAccountScreen() {
           <TouchableOpacity
             style={[
               styles.submitButton,
-              (isLoading || isFetching) && styles.disabledButton,
+              (NaverAccountPending || isFetching) && styles.disabledButton,
             ]}
             onPress={handleSaveAccount}
-            disabled={isLoading || isFetching}
+            disabled={NaverAccountPending || isFetching}
           >
             <Text style={styles.submitButtonText}>
-              {isLoading
+              {NaverAccountPending
                 ? "저장 중..."
                 : isFetching
                   ? "불러오는 중..."
@@ -173,6 +139,8 @@ export default function NaverAccountScreen() {
     </SafeAreaView>
   );
 }
+
+/////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   container: {
@@ -261,10 +229,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     left: 20,
-    marginBottom: 4, // 타이틀과의 간격 조절
+    marginBottom: 4,
   },
   backButton: {
-    padding: 4, // 터치 영역은 넓히면서 좌측에 밀착
+    padding: 4,
     justifyContent: "center",
     alignItems: "center",
   },

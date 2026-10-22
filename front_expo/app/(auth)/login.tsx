@@ -1,4 +1,4 @@
-import { client } from "@/api/client";
+import { loginApi } from "@/api/auth/loginApi";
 import { setAccessToken } from "@/api/token";
 import Colors from "@/constants/Colors";
 import { useMutation } from "@tanstack/react-query";
@@ -20,23 +20,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-interface LoginPayload {
-  username: string;
-  password: string;
-}
-
-const loginApi = async (data: LoginPayload) => {
-  const response = await client.post("/api/users/login/", data);
-  return response.data;
-};
-
 export default function LoginScreen() {
   const router = useRouter();
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
 
-  const loginMutation = useMutation({
+  const { mutate: loginMutation, isPending: loginPending } = useMutation({
     mutationFn: loginApi,
     onSuccess: async (data) => {
       if (data.token) {
@@ -55,12 +45,13 @@ export default function LoginScreen() {
       Alert.alert("알림", "이메일과 비밀번호를 모두 입력해 주세요.");
       return;
     }
-
-    loginMutation.mutate({
+    loginMutation({
       username: username.trim(),
       password,
     });
   };
+
+  /////////////////////////////////////////////////////////////////////
 
   return (
     <SafeAreaView style={styles.container}>
@@ -72,7 +63,6 @@ export default function LoginScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* 🌟 1. 상단 로고 & 브랜드 헤더 */}
           <View style={styles.headerContainer}>
             <View style={styles.logoCard}>
               <Image
@@ -87,7 +77,6 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* 📝 2. 로그인 폼 카드 */}
           <View style={styles.formCard}>
             <Text style={styles.label}>아이디</Text>
             <View style={styles.inputContainer}>
@@ -123,10 +112,10 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.submitButton}
               onPress={handleLogin}
-              disabled={loginMutation.isPending}
+              disabled={loginPending}
               activeOpacity={0.8}
             >
-              {loginMutation.isPending ? (
+              {loginPending ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={styles.submitButtonText}>로그인하기</Text>
@@ -149,6 +138,8 @@ export default function LoginScreen() {
   );
 }
 
+/////////////////////////////////////////////////////////////////////
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -161,7 +152,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
-  // 입력창을 감싸는 컨테이너 (가로 배치)
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -190,17 +180,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 26,
   },
-  /* 로고 아이콘 카드 스타일 업그레이드 */
   logoCard: {
     width: 92,
     height: 92,
     borderRadius: 48,
-
     padding: 5,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    // 입체감 있는 그림자
     shadowColor: Colors.point,
     shadowOffset: { width: 4, height: 6 },
     shadowOpacity: 0.35,
@@ -230,7 +217,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 2,
   },
-  /* 배지 스타일 */
   badgeContainer: {
     flexDirection: "row",
     gap: 8,
@@ -290,7 +276,7 @@ const styles = StyleSheet.create({
     color: Colors.point,
     fontWeight: "bold",
   },
-  /* 소셜 로그인 섹션 */
+
   socialSection: {
     marginTop: 28,
   },

@@ -1,15 +1,24 @@
-import { client } from "@/api/client";
-import { saveTokenToServer } from "@/api/saveTokenToServer";
+import { saveTokenToServer } from "@/api/common/saveTokenToServer";
+import { getFavorites } from "@/api/favorite/getFavorites";
+import { getUserProfile } from "@/api/user/getUserProfile";
+import DateSelectModal from "@/components/DateSelectModal";
+import TimeSelectModal from "@/components/TimeSelectModal";
 import Colors from "@/constants/Colors";
+import { THIS_MONTH } from "@/constants/THIS_MONTH";
+import { THIS_YEAR } from "@/constants/THIS_YEAR";
+import { useCreateBooking } from "@/hooks/booking/useCreateBooking";
+import { FavoriteData } from "@/types/favorite/FavoriteData";
+import { UserProfile } from "@/types/user/UserProfile";
+import { getDaysInMonth } from "@/utils/getDaysInMonth";
 import { registerForPushNotificationsAsync } from "@/utils/registerForPushNotificationsAsync";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { Calendar, Clock, Store } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,78 +27,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FavoriteData } from "./favorites";
-import { UserProfile } from "./settings";
-import * as Notifications from "expo-notifications";
-
-interface CreateBookingPayload {
-  salon_name: string;
-  designer_name: string;
-  menu_name: string;
-  booking_date: string;
-  booking_time: string;
-  payment_method: "NPAY" | "ONSITE";
-}
-
-const createBooking = async (data: CreateBookingPayload) => {
-  const response = await client.post("/api/bookings/", data);
-  return response.data;
-};
-
-const fetchUserProfile = async (): Promise<UserProfile> => {
-  const response = await client.get("/api/users/");
-  return response.data;
-};
-
-// 🗓️ 캘린더 생성 도우미
-const getDaysInMonth = (year: number, month: number) => {
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  const days: ({ dateString: string; dayNum: number } | null)[] = [];
-  for (let i = 0; i < firstDay; i++) {
-    days.push(null);
-  }
-  for (let d = 1; d <= lastDate; d++) {
-    const monthStr = String(month + 1).padStart(2, "0");
-    const dayStr = String(d).padStart(2, "0");
-    days.push({
-      dateString: `${year}-${monthStr}-${dayStr}`,
-      dayNum: d,
-    });
-  }
-  return days;
-};
-
-// ⏰ 오전 / 오후 30분 단위 타임슬롯 정의
-const amSlots = ["10:00", "10:30", "11:00", "11:30"];
-const pmSlots = [
-  "12:00",
-  "12:30",
-  "1:00",
-  "1:30",
-  "2:00",
-  "2:30",
-  "3:00",
-  "3:30",
-  "4:00",
-  "4:30",
-  "5:00",
-  "5:30",
-  "6:00",
-  "6:30",
-  "7:00",
-  "7:30",
-  "8:00",
-  "8:30",
-];
-
-const fetchFavorites = async (): Promise<FavoriteData> => {
-  const response = await client.get("/api/users/favorite/");
-  return response.data;
-};
-
-
 
 Notifications.setNotificationHandler({
   handleNotification:
@@ -102,9 +39,10 @@ Notifications.setNotificationHandler({
     }),
 });
 
+/////////////////////////////////////////////////////////////////////
+
 export default function HomeScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [salonName, setSalonName] = useState("");
   const [designerName, setDesignerName] = useState("");
@@ -112,39 +50,17 @@ export default function HomeScreen() {
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"NPAY" | "ONSITE">("NPAY");
-
   const [dateModalVisible, setDateModalVisible] = useState(false);
   const [timeModalVisible, setTimeModalVisible] = useState(false);
 
-  const today = new Date();
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  /////////////////////////////////////////////////////////////////////
+
+  const [currentYear, setCurrentYear] = useState(THIS_YEAR);
+  const [currentMonth, setCurrentMonth] = useState(THIS_MONTH);
 
   const calendarDays = getDaysInMonth(currentYear, currentMonth);
   const isCurrentMonth =
-    currentYear === today.getFullYear() && currentMonth === today.getMonth();
-
-  const { data, isLoading, isError, refetch } = useQuery<FavoriteData>({
-    queryKey: ["favorites"],
-    queryFn: fetchFavorites,
-  });
-
-  // 조회된 데이터를 로컬 입력 상태와 동기화
-  useEffect(() => {
-    if (data) {
-      setSalonName(data.favorite_salon || "");
-      setDesignerName(data.favorite_designer || "");
-      setMenuName(data.favorite_menu || "");
-    }
-  }, [data]);
-
-  useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        saveTokenToServer(token);
-      }
-    });
-  }, []);
+    currentYear === THIS_YEAR && currentMonth === THIS_MONTH;
 
   const handlePrevMonth = () => {
     if (isCurrentMonth) return;
@@ -157,8 +73,8 @@ export default function HomeScreen() {
   };
 
   const handleNextMonth = () => {
-    const maxYear = today.getFullYear() + 1;
-    if (currentYear >= maxYear && currentMonth >= today.getMonth()) return;
+    const maxYear = THIS_YEAR + 1;
+    if (currentYear >= maxYear && currentMonth >= THIS_MONTH) return;
     if (currentMonth === 11) {
       setCurrentYear(currentYear + 1);
       setCurrentMonth(0);
@@ -167,34 +83,42 @@ export default function HomeScreen() {
     }
   };
 
-  const { data: userInfo } = useQuery<UserProfile>({
-    queryKey: ["userInfo"],
-    queryFn: fetchUserProfile,
+  /////////////////////////////////////////////////////////////////////
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        saveTokenToServer(token);
+      }
+    });
+  }, []);
+
+  /////////////////////////////////////////////////////////////////////
+
+  const { data: favData } = useQuery<FavoriteData>({
+    queryKey: ["favorites"],
+    queryFn: getFavorites,
   });
 
-  const bookingMutation = useMutation({
-    mutationFn: createBooking,
-    onSuccess: (data) => {
-      if (data.status === "need_more_info") {
-        Alert.alert("정보 부족", data.message);
-        return;
-      }
-      Alert.alert("예약 신청 완료", "AI 에이전트가 예약을 시작합니다. 🤖", [
-        {
-          text: "확인",
-          onPress: () => {
-            queryClient.invalidateQueries({ queryKey: ["bookings"] });
-            router.push("/(tabs)/bookings");
-          },
-        },
-      ]);
-    },
-    onError: (error: any) => {
-      const errorMessage =
-        error.response?.data?.message || "서버와 통신 중 문제가 발생했습니다.";
-      Alert.alert("오류 발생", errorMessage);
-    },
+  useEffect(() => {
+    if (favData) {
+      setSalonName(favData.favorite_salon || "");
+      setDesignerName(favData.favorite_designer || "");
+      setMenuName(favData.favorite_menu || "");
+    }
+  }, [favData]);
+
+  /////////////////////////////////////////////////////////////////////
+
+  const { data: userInfo } = useQuery<UserProfile>({
+    queryKey: ["userInfo"],
+    queryFn: getUserProfile,
   });
+
+  /////////////////////////////////////////////////////////////////////
+
+  const { mutate: createBookingMutation, isPending: createBookingPending } =
+    useCreateBooking();
 
   const handleSubmit = () => {
     if (
@@ -225,7 +149,7 @@ export default function HomeScreen() {
       return;
     }
 
-    bookingMutation.mutate({
+    createBookingMutation({
       salon_name: salonName,
       designer_name: designerName,
       menu_name: menuName,
@@ -235,6 +159,8 @@ export default function HomeScreen() {
     });
   };
 
+  /////////////////////////////////////////////////////////////////////
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -242,7 +168,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerContainer}>
-          {/* 💡 아이콘과 타이틀을 가로 한 줄로 배치 */}
           <View style={styles.titleRow}>
             <Store size={24} color={Colors.primary} style={styles.titleIcon} />
             <Text style={styles.title}>미용실 예약 요청</Text>
@@ -286,7 +211,6 @@ export default function HomeScreen() {
             onPress={() => setDateModalVisible(true)}
             activeOpacity={0.8}
           >
-            {/* 날짜 아이콘 추가 */}
             <Calendar
               size={18}
               color={bookingDate ? Colors.text : Colors.subText}
@@ -305,7 +229,6 @@ export default function HomeScreen() {
             onPress={() => setTimeModalVisible(true)}
             activeOpacity={0.8}
           >
-            {/* 시간 아이콘 추가 */}
             <Clock
               size={18}
               color={bookingTime ? Colors.text : Colors.subText}
@@ -358,10 +281,10 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmit}
-            disabled={bookingMutation.isPending}
+            disabled={createBookingPending}
             activeOpacity={0.8}
           >
-            {bookingMutation.isPending ? (
+            {createBookingPending ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <Text style={styles.submitButtonText}>미용실 예약 요청하기</Text>
@@ -370,211 +293,36 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* ---------------- 🗓️ 캘린더 형태 날짜 모달 ---------------- */}
-      <Modal
+      <DateSelectModal
         visible={dateModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setDateModalVisible(false)}
-      >
-        {/* 1. 바깥 배경 터치 시 모달 닫기 */}
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setDateModalVisible(false)}
-        >
-          {/* 2. 내부 콘텐츠를 누를 때는 이벤트 전파 방지 */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={styles.modalContent}
-          >
-            {/* 상단 월 네비게이션 헤더 */}
-            <View style={styles.calendarHeader}>
-              {!isCurrentMonth ? (
-                <TouchableOpacity
-                  onPress={handlePrevMonth}
-                  style={styles.navButton}
-                >
-                  <Text style={styles.navButtonText}>◀</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.navButtonPlaceholder} />
-              )}
-              <Text style={styles.modalTitle}>
-                {currentYear}년 {currentMonth + 1}월
-              </Text>
-              <TouchableOpacity
-                onPress={handleNextMonth}
-                style={styles.navButton}
-              >
-                <Text style={styles.navButtonText}>▶</Text>
-              </TouchableOpacity>
-            </View>
+        onClose={() => setDateModalVisible(false)}
+        isCurrentMonth={isCurrentMonth}
+        handlePrevMonth={handlePrevMonth}
+        handleNextMonth={handleNextMonth}
+        currentYear={currentYear}
+        currentMonth={currentMonth}
+        calendarDays={calendarDays}
+        bookingDate={bookingDate}
+        onSelectDate={(dateString) => {
+          setBookingDate(dateString);
+          setDateModalVisible(false);
+        }}
+      />
 
-            <View style={styles.calendarWeekHeader}>
-              {["일", "월", "화", "수", "목", "금", "토"].map((week, idx) => (
-                <Text
-                  key={week}
-                  style={[
-                    styles.calendarWeekText,
-                    idx === 0 && { color: "#EF4444" },
-                    idx === 6 && { color: "#3B82F6" },
-                  ]}
-                >
-                  {week}
-                </Text>
-              ))}
-            </View>
-
-            <View style={styles.calendarGrid}>
-              {calendarDays.map((item, index) => {
-                if (!item) {
-                  return (
-                    <View key={`empty-${index}`} style={styles.calendarCell} />
-                  );
-                }
-                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-                const isPast = item.dateString < todayStr;
-                const isSelected = bookingDate === item.dateString;
-
-                return (
-                  <TouchableOpacity
-                    key={item.dateString}
-                    style={[
-                      styles.calendarCell,
-                      isSelected && styles.calendarCellSelected,
-                    ]}
-                    disabled={isPast}
-                    onPress={() => {
-                      setBookingDate(item.dateString);
-                      setDateModalVisible(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.calendarCellText,
-                        isSelected && styles.calendarCellTextSelected,
-                        isPast && styles.calendarCellTextDisabled,
-                      ]}
-                    >
-                      {item.dayNum}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setDateModalVisible(false)}
-            >
-              <Text style={styles.modalCloseText}>닫기</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ---------------- ⏰ 30분 단위 오전/오후 시간 선택 모달 ---------------- */}
-      <Modal
+      <TimeSelectModal
         visible={timeModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setTimeModalVisible(false)}
-      >
-        {/* 1. 바깥 배경을 TouchableOpacity로 감싸고 터치 시 모달 닫기 */}
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setTimeModalVisible(false)}
-        >
-          {/* 2. 내부 콘텐츠를 누를 때는 터치 이벤트가 배경으로 전파되지 않도록 차단 */}
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={styles.modalContent}
-          >
-            <Text style={styles.modalTitle}>예약 시간 선택</Text>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={{ maxHeight: 400 }}
-            >
-              {/* 오전 섹션 */}
-              <Text style={styles.timeSectionTitle}>오전</Text>
-              <View style={styles.timeGrid}>
-                {amSlots.map((t) => {
-                  const isSelected = bookingTime === t;
-                  return (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.timeSlotCell,
-                        isSelected && styles.timeSlotCellSelected,
-                      ]}
-                      onPress={() => {
-                        setBookingTime(t);
-                        setTimeModalVisible(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.timeSlotText,
-                          isSelected && styles.timeSlotTextSelected,
-                        ]}
-                      >
-                        {t}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* 오후 섹션 */}
-              <Text style={[styles.timeSectionTitle, { marginTop: 24 }]}>
-                오후
-              </Text>
-              <View style={styles.timeGrid}>
-                {pmSlots.map((t) => {
-                  const isSelected = bookingTime === t;
-                  return (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.timeSlotCell,
-                        isSelected && styles.timeSlotCellSelected,
-                      ]}
-                      onPress={() => {
-                        setBookingTime(t);
-                        setTimeModalVisible(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.timeSlotText,
-                          isSelected && styles.timeSlotTextSelected,
-                        ]}
-                      >
-                        {t}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.modalCloseButton, { marginTop: 16 }]}
-              onPress={() => setTimeModalVisible(false)}
-            >
-              <Text style={styles.modalCloseText}>닫기</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setTimeModalVisible(false)}
+        bookingTime={bookingTime}
+        onSelectTime={(time) => {
+          setBookingTime(time);
+          setTimeModalVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
+
+/////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   container: {
@@ -592,17 +340,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   titleRow: {
-    flexDirection: "row", // 가로 정렬
-    alignItems: "center", // 아이콘과 텍스트의 수직 중앙 맞춤
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 3,
   },
   titleIcon: {
-    marginRight: 8, // 아이콘과 타이틀 글자 사이 간격
+    marginRight: 8,
     marginBottom: 6,
   },
   inputTouchField: {
-    flexDirection: "row", // 👈 아이콘과 텍스트 가로 정렬
-    alignItems: "center", // 👈 세로 중앙 정렬
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.input,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -611,7 +359,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   inputIcon: {
-    marginRight: 10, // 👈 아이콘과 텍스트 사이 간격
+    marginRight: 10,
   },
   inputText: {
     fontSize: 14,
@@ -693,133 +441,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  /* 모달 공통 스타일 */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 30,
-  },
-  calendarHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  navButton: {
-    padding: 8,
-    width: 36,
-    alignItems: "center",
-  },
-  navButtonPlaceholder: {
-    width: 36,
-  },
-  navButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: Colors.primary,
-    marginBottom: 14,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: Colors.text,
-    textAlign: "center",
-    marginBottom: 14,
-  },
-  modalCloseButton: {
-    paddingVertical: 14,
-    marginTop: 18,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-  },
-  modalCloseText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.subText,
-  },
-
-  /* 캘린더 스타일 */
-  calendarWeekHeader: {
-    flexDirection: "row",
-    marginBottom: 10,
-  },
-  calendarWeekText: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.subText,
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  calendarCell: {
-    width: "14.28%",
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 22,
-    marginVertical: 2,
-  },
-  calendarCellSelected: {
-    backgroundColor: Colors.primary,
-  },
-  calendarCellText: {
-    fontSize: 14,
-    color: Colors.text,
-  },
-  calendarCellTextSelected: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-  },
-  calendarCellTextDisabled: {
-    color: "#D1D5DB",
-  },
-
-  /* 시간 Grid 스타일 */
-  timeSectionTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: Colors.subText,
-    marginVertical: 12,
-  },
-  timeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  timeSlotCell: {
-    width: "22.5%", // 4열 배치 (30분 단위 슬롯을 예쁘게 정렬)
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: "#F9FAFB",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  timeSlotCellSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-  timeSlotText: {
-    fontSize: 13,
-    color: Colors.text,
-  },
-  timeSlotTextSelected: {
-    color: Colors.primary,
     fontWeight: "bold",
   },
 });

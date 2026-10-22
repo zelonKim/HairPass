@@ -1,17 +1,22 @@
-import { client } from "@/api/client";
+import { removeAccessToken } from "@/api/token";
+import { getUserProfile } from "@/api/user/getUserProfile";
+import ServiceCautionModal from "@/components/ServiceCautionModal";
+import ServiceGuideModal from "@/components/ServiceGuideModal";
 import Colors from "@/constants/Colors";
+import { useResetNaverAccount } from "@/hooks/auth/useResetNaverAccount";
+import { useWithdrawAccount } from "@/hooks/auth/useWithdrawAccount";
+import { UserProfile } from "@/types/user/UserProfile";
 import { handleTogglePush } from "@/utils/handleTogglePush";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import {
   Bell,
   ChevronRight,
   FileText,
   Link2,
   LogOut,
-  ShieldCheck,
   User,
   UserX,
 } from "lucide-react-native";
@@ -29,31 +34,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// 유저 프로필 타입 정의
-export interface UserProfile {
-  username: string;
-  push_token: string;
-  naver_id: string;
-  naver_pw: string;
-}
-
-// 프로필 조회 API
-const fetchUserProfile = async (): Promise<UserProfile> => {
-  const response = await client.get("/api/users/");
-  return response.data;
-};
-
-// 회원 탈퇴 API
-const withdrawAccount = async () => {
-  const response = await client.delete("/api/users/withdraw/");
-  return response.data;
-};
-
 export default function SettingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // 푸시 알림 토글 상태 (로컬 스토어 등과 연동 가능)
+  const [guideModalVisible, setGuideModalVisible] = useState(false);
+  const [cautionModalVisible, setCautionModalVisible] = useState(false);
   const [pushEnabled, setPushEnabled] = useState<boolean>();
 
   useEffect(() => {
@@ -64,32 +50,19 @@ export default function SettingsScreen() {
 
     checkNotificationPermission();
   }, []);
-  // 1. 유저 정보 조회 (username 표시용)
+
+  /////////////////////////////////////////////////////////////////////
+
   const { data: userInfo, isLoading } = useQuery<UserProfile>({
     queryKey: ["userInfo"],
-    queryFn: fetchUserProfile,
+    queryFn: getUserProfile,
   });
 
-  // 네이버 연동 초기화(쿠키 삭제) 뮤테이션
-  const resetNaverAccountMutation = useMutation({
-    mutationFn: async () => {
-      await client.delete("/api/users/naver-account/");
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["userInfo"] });
-      router.push("/(auth)/naver-account");
-    },
-    onError: (error) => {
-      console.error("네이버 연동 해제 실패:", error);
-      Alert.alert(
-        "오류",
-        "기존 네이버 연동 정보를 초기화하는 중 문제가 발생했습니다.",
-      );
-    },
-  });
+  /////////////////////////////////////////////////////////////////////
+
+  const { mutate: resetNaverAccountMutation } = useResetNaverAccount();
 
   const handlePressNaverLink = () => {
-    // 이미 연동된 계정이 존재하는 경우, 재연동 의사를 물어볼 수 있습니다.
     if (userInfo?.naver_id && userInfo?.naver_pw) {
       Alert.alert(
         "네이버 계정 재연동",
@@ -98,7 +71,7 @@ export default function SettingsScreen() {
           { text: "취소", style: "cancel" },
           {
             text: "재연동하기",
-            onPress: () => resetNaverAccountMutation.mutate(),
+            onPress: () => resetNaverAccountMutation(),
           },
         ],
       );
@@ -107,42 +80,9 @@ export default function SettingsScreen() {
     }
   };
 
-  // 2. 로그아웃 핸들러
-  const handleLogout = async () => {
-    Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
-      { text: "취소", style: "cancel" },
-      {
-        text: "로그아웃",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await SecureStore.deleteItemAsync("userToken");
-            queryClient.clear(); // 쿼리 캐시 초기화
-            router.replace("/(auth)/login");
-          } catch (error) {
-            console.error("로그아웃 중 에러 발생:", error);
-            Alert.alert("오류", "로그아웃 처리 중 문제가 발생했습니다.");
-          }
-        },
-      },
-    ]);
-  };
+  /////////////////////////////////////////////////////////////////////
 
-  // 3. 회원 탈퇴 Mutation
-  const withdrawMutation = useMutation({
-    mutationFn: withdrawAccount,
-    onSuccess: async () => {
-      await SecureStore.deleteItemAsync("userToken");
-      queryClient.clear();
-      Alert.alert("회원 탈퇴 완료", "그동안 이용해 주셔서 감사합니다.");
-      router.replace("/(auth)/login");
-    },
-    onError: (error: any) => {
-      const errorMsg =
-        error.response?.data?.detail || "회원 탈퇴 처리에 실패했습니다.";
-      Alert.alert("오류", errorMsg);
-    },
-  });
+  const { mutate: withdrawMutation } = useWithdrawAccount();
 
   const handleWithdraw = () => {
     Alert.alert(
@@ -153,11 +93,35 @@ export default function SettingsScreen() {
         {
           text: "탈퇴하기",
           style: "destructive",
-          onPress: () => withdrawMutation.mutate(),
+          onPress: () => withdrawMutation(),
         },
       ],
     );
   };
+
+  /////////////////////////////////////////////////////////////////////
+
+  const handleLogout = async () => {
+    Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "로그아웃",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await removeAccessToken();
+            queryClient.clear();
+            router.replace("/(auth)/login");
+          } catch (error) {
+            console.error("로그아웃 중 에러 발생:", error);
+            Alert.alert("오류", "로그아웃 처리 중 문제가 발생했습니다.");
+          }
+        },
+      },
+    ]);
+  };
+
+  /////////////////////////////////////////////////////////////////////
 
   return (
     <SafeAreaView style={styles.container}>
@@ -165,15 +129,12 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* 상단 헤더 타이틀 */}
         <View style={styles.headerContainer}>
-          {/* 💡 설정 아이콘 + 타이틀 가로 묶음 */}
           <View style={styles.titleRow}>
             <Text style={styles.headerTitle}>나의 설정</Text>
           </View>
         </View>
 
-        {/* 1. 유저 프로필 카드 */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <User size={25} color={Colors.primary} style={styles.titleIcon} />
@@ -194,7 +155,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* 2. 앱 설정 섹션 */}
         <Text style={styles.sectionHeader}>앱 설정</Text>
         <View style={styles.menuGroup}>
           <View style={styles.menuItem}>
@@ -229,55 +189,54 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 3. 약관 및 정책 섹션 */}
-        <Text style={styles.sectionHeader}>약관 및 정책</Text>
+        <Text style={styles.sectionHeader}>서비스 안내</Text>
         <View style={styles.menuGroup}>
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() =>
-              Alert.alert(
-                "서비스 이용약관",
-                "여기에 서비스 이용약관 내용이 표시됩니다.",
-              )
-            }
+            onPress={() => setGuideModalVisible(true)}
           >
             <View style={styles.menuLeft}>
               <FileText
                 size={20}
-                color={Colors.subText}
+                color={Colors.pointDark}
                 style={styles.menuIcon}
               />
-              <Text style={styles.menuText}>서비스 이용약관</Text>
+              <Text style={styles.menuText}>서비스 이용 방법</Text>
             </View>
             <ChevronRight size={18} color={Colors.muted} />
           </TouchableOpacity>
+
+          <ServiceGuideModal
+            visible={guideModalVisible}
+            onClose={() => setGuideModalVisible(false)}
+          />
 
           <View style={styles.separator} />
 
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={() =>
-              Alert.alert(
-                "개인정보처리방침",
-                "여기에 개인정보처리방침 내용이 표시됩니다.",
-              )
-            }
+            onPress={() => setCautionModalVisible(true)}
           >
             <View style={styles.menuLeft}>
-              <ShieldCheck
-                size={20}
-                color={Colors.subText}
+              <Ionicons
+                name="alert-circle-outline"
+                size={22}
+                color={Colors.warning}
                 style={styles.menuIcon}
               />
-              <Text style={styles.menuText}>개인정보처리방침</Text>
+              <Text style={styles.menuText}>서비스 이용 주의사항</Text>
             </View>
             <ChevronRight size={18} color={Colors.muted} />
           </TouchableOpacity>
+
+          <ServiceCautionModal
+            visible={cautionModalVisible}
+            onClose={() => setCautionModalVisible(false)}
+          />
         </View>
 
-        {/* 4. 계정 관리 섹션 */}
         <Text style={styles.sectionHeader}>계정 관리</Text>
         <View style={styles.menuGroup}>
           <TouchableOpacity
@@ -315,6 +274,8 @@ export default function SettingsScreen() {
   );
 }
 
+/////////////////////////////////////////////////////////////////////
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -328,14 +289,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   titleRow: {
-    flexDirection: "row", // 아이콘과 글자 가로 정렬
-    alignItems: "center", // 수직 중앙 맞춤
+    flexDirection: "row",
+    alignItems: "center",
   },
   titleIcon: {
-    marginRight: 6, // 아이콘과 '나의 설정' 글자 사이 간격
+    marginRight: 6,
     marginLeft: 6,
   },
-
   headerTitle: {
     fontSize: 22,
     fontWeight: "800",
