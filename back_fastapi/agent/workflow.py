@@ -19,21 +19,20 @@ async def run_booking_agent(initial_state: BookingState):
     if os.path.exists(user_data_dir):
         try:
             shutil.rmtree(user_data_dir)
-            print(f"🧹 [Playwright] 유저 {user_id}의 이전 프로필 세션 정리 완료")
+            print(f"🧹 유저 {user_id}의 이전 프로필 세션 정리 완료")
         except Exception as e:
-            print(f"⚠️ 프로필 정리 실패: {e}")
+            print(f"⚠️ 프로필 세션 정리 실패: {e}")
 
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=False,  # 개발 중에는 False, 배포 시 True
-            # 💡 PC 전용 데스크톱 User-Agent 설정
+            headless=False,
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            viewport={"width": 1280, "height": 800},  # PC용 넉넉한 뷰포트 크기
+            viewport={"width": 1280, "height": 800},
             args=[
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
-                "--disable-blink-features=AutomationControlled",  # 봇 탐지 방지
+                "--disable-blink-features=AutomationControlled",
             ],
         )
 
@@ -41,7 +40,7 @@ async def run_booking_agent(initial_state: BookingState):
 
         await page.wait_for_timeout(1000)
 
-        # 1. Graph 생성
+        # 1. 그래프 생성
         workflow = StateGraph(BookingState)
 
         # 2. page 객체를 주입하여 각 노드 함수 생성
@@ -58,7 +57,7 @@ async def run_booking_agent(initial_state: BookingState):
         workflow.add_node("select_service", select_service_node)
         workflow.add_node("select_payment", select_payment_node)
 
-        # 4. 엣지 연결 (완전한 흐름)
+        # 4. 엣지 연결
         workflow.set_entry_point("open_salon")
         workflow.add_edge("open_salon", "select_date_time")
         workflow.add_edge("select_date_time", "select_designer")
@@ -69,9 +68,9 @@ async def run_booking_agent(initial_state: BookingState):
         # 5. 컴파일 및 실행
         app = workflow.compile()
 
-        print("👉 [LangGraph 미용실 예약 자동화 에이전트 구동 시작]")
+        print("👉 [LangGraph 자동화 에이전트 구동 시작]")
         result = await app.ainvoke(initial_state)  # type: ignore
 
-        await page.wait_for_timeout(3000)  # 완료 확인을 위해 잠시 대기
+        await page.wait_for_timeout(3000)
         await context.close()
         return result

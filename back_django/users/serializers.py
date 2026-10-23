@@ -4,7 +4,6 @@ import re
 
 User = get_user_model()
 
-
 class SignupSerializer(serializers.ModelSerializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -16,7 +15,7 @@ class SignupSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
 
-        if len(value) < 3 :
+        if len(value) < 3:
             raise serializers.ValidationError("아이디는 3자 이상이어야 합니다.")
 
         if len(value) > 20:
@@ -84,11 +83,7 @@ class LoginSerializer(serializers.Serializer):
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = (
-            "favorite_salon",
-            "favorite_designer",
-            "favorite_menu",
-        )
+        fields = ("favorite_salon", "favorite_designer", "favorite_menu")
 
 
 #####################################################

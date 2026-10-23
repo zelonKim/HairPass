@@ -1,11 +1,7 @@
 from agent.state import BookingState
-from agent.workflow import run_booking_agent
 from fastapi import BackgroundTasks, FastAPI
-from pydantic import BaseModel
-from openai import OpenAI
 from schema import BookingRequest, NormalizedBookingState
 from utils.normalizer import normalize_booking_data_with_llm
-from playwright.async_api import async_playwright
 from utils.run_and_callback import run_and_callback
 import urllib.parse
 
@@ -19,7 +15,7 @@ def read_root():
 
 @app.post("/api/v1/auto-booking")
 async def trigger_auto_booking(req: BookingRequest, background_tasks: BackgroundTasks):
-    # 1. LLM을 통한 예약 데이터 지능형 규격화 수행
+    # LLM을 통한 예약 데이터 정규화 수행
     normalized_data: NormalizedBookingState = normalize_booking_data_with_llm(req)
 
     encoded_salon_name = urllib.parse.quote(req.salon_name)
@@ -31,7 +27,7 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     print("\n" + "=" * 50)
     print("🤖 [AI 예약 정규화 결과]")
     print(
-        f" - 예약 날짜 & 시간: {normalized_data.target_year_month}.{normalized_data.target_date} & {normalized_data.target_time}"
+        f" - 예약 날짜 및 시간: {normalized_data.target_year_month}.{normalized_data.target_date} & {normalized_data.target_time}"
     )
     print(f" - 담당 디자이너: {normalized_data.designer_name}")
     print(
@@ -40,7 +36,7 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
     print(f" - 결제 수단:  {normalized_data.payment_method}")
     print("=" * 50 + "\n")
 
-    # 2. Playwright 에이전트에 주입할 초기 상태(State) 구성
+    # 에이전트 초기 상태 구성
     initial_state: BookingState = {
         "user_id": req.user_id,
         "salon_url": generated_salon_url,
@@ -58,7 +54,7 @@ async def trigger_auto_booking(req: BookingRequest, background_tasks: Background
         "is_success": False,
     }
 
-    # 3. FastAPI BackgroundTasks를 통해 비동기로 Playwright 에이전트 실행
+    # 에이전트 실행
     background_tasks.add_task(run_and_callback, initial_state, req.booking_id)
 
     return {"status": "accepted", "message": "자동화 예약 백그라운드 실행 시작"}

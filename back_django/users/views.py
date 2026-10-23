@@ -65,15 +65,13 @@ class LoginView(APIView):
 
 
 class FavoriteView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        """유저의 단골 미용실, 선호 디자이너, 자주 받는 시술 조회"""
         serializer = FavoriteSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request):
-        """유저의 선호 정보 수정"""
         serializer = FavoriteSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -91,7 +89,7 @@ class FavoriteView(APIView):
 
 
 class UserInfoView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
         serializer = UserInfoSerializer(request.user)
@@ -109,7 +107,7 @@ class UserInfoView(APIView):
 
 
 class WithdrawView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def delete(self, request):
         user = request.user
@@ -124,13 +122,12 @@ class WithdrawView(APIView):
 
 
 class NaverCookieView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
     def patch(self, request):
         user = request.user
         raw_cookies = request.data.get("cookies")
 
-        # 연동 해제 (초기화)
         if raw_cookies is None or raw_cookies == "":
             user.naver_account_cookie = None
             user.save(update_fields=["naver_account_cookie"])
@@ -149,7 +146,6 @@ class NaverCookieView(APIView):
                     name = name.strip()
                     value = value.strip()
 
-                    # 💡 로그인 세션에 핵심적인 네이버 쿠키 위주로 필터링 및 보안 규격 맞춤
                     if (
                         name
                         and value
@@ -190,9 +186,8 @@ class NaverCookieView(APIView):
 
 
 class NaverAccountView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = (IsAuthenticated,)
 
-    # 1. 네이버 계정 정보 조회
     def get(self, request):
         user = request.user
         return Response(
@@ -203,13 +198,11 @@ class NaverAccountView(APIView):
             status=status.HTTP_200_OK,
         )
 
-    # 2. 네이버 계정 정보 수정 및 저장
     def patch(self, request):
         user = request.user
         naver_id = request.data.get("naver_id")
         naver_pw = request.data.get("naver_pw")
 
-        # 빈 값이나 공백이 들어온 경우 처리
         if naver_id is not None:
             user.naver_id = naver_id.strip()
         if naver_pw is not None:
@@ -252,7 +245,6 @@ class PushTokenView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 현재 로그인한 유저의 푸시 토큰 업데이트
         user = request.user
         user.push_token = push_token
         user.save()
@@ -267,7 +259,7 @@ class PushTokenView(APIView):
 
     def delete(self, request):
         user = request.user
-        user.push_token = None 
+        user.push_token = None
         user.save()
 
         return Response(
