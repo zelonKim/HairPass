@@ -143,7 +143,7 @@ def make_node_select_date_and_time(page: Page):
             if target_btn:
                 await target_btn.wait_for(state="visible", timeout=3000)
                 await target_btn.click()
-                print(f"✨ {target_day_str}일 선택 완료!")
+                print("📆 날짜 선택 완료!")
             else:
                 raise Exception(
                     f"달력에서 이번 달 {target_day_str}일을 찾지 못했습니다."
@@ -155,6 +155,7 @@ def make_node_select_date_and_time(page: Page):
             time_btn = iframe.locator("a", has_text=state["target_time"]).first
             await time_btn.click()
             await page.wait_for_timeout(1000)
+            print("🕰️ 시간 선택 완료!")
 
             search_designer_btn = iframe.locator(
                 "a, button", has_text="스타일리스트 검색"
