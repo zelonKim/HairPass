@@ -24,7 +24,6 @@ langgraph-checkpoint==4.3.0
 langgraph-prebuilt==1.1.1
 langgraph-sdk==0.4.7
 langsmith==0.14.8
-MouseInfo==0.1.3
 numpy==2.5.4
 openai==3.31.0
 opencv-python==5.0.0.93
@@ -34,11 +33,8 @@ ormsgpack==1.12.2
 packaging==26.3
 pillow==12.3.0
 playwright==1.64.0
-PyAutoGUI==0.9.54
 pydantic==2.14.1
 pydantic_core==2.50.1
-pyee==14.0.0
-PyGetWindow==0.0.9
 PyMsgBox==2.0.1
 pyobjc-core==12.2.2
 pyobjc-framework-Cocoa==12.2.2
