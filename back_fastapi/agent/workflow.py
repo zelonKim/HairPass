@@ -10,7 +10,6 @@ from agent.nodes import (
 from playwright.async_api import async_playwright
 import os
 import shutil
-from playwright_stealth import stealth
 
 
 async def run_booking_agent(initial_state: BookingState):
@@ -38,8 +37,6 @@ async def run_booking_agent(initial_state: BookingState):
         )
 
         page = context.pages[0] if context.pages else await context.new_page()
-
-        await stealth(page)
 
         await page.wait_for_timeout(1000)
 
