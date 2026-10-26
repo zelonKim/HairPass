@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 4.0,
   },
   centerContainer: {
     flex: 1,
