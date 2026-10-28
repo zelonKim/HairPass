@@ -28,7 +28,7 @@
    - Integrates with the Django backend REST API to securely manage authentication tokens and transmit booking payloads. (Django 백엔드 REST API와 연동하여 인증 토큰 관리 및 예약 데이터를 안전하게 송수신합니다.)
 
 4. **`utils/` - Client Utilities (클라이언트 유틸리티)**
-   - Executes client-side utility functions such as calendar date calculation logic and direct Naver booking link redirection (`window.open`). (날짜 계산 로직 및 네이버 예약 페이지 직접 연결 등의 클라이언트 유틸리티 기능을 수행합니다.)
+   - Executes client-side utility functions such as calendar date calculation logic and direct Naver booking link redirection. (날짜 계산 로직 및 네이버 예약 페이지 직접 연결 등의 클라이언트 유틸리티 기능을 수행합니다.)
 
 ---
 

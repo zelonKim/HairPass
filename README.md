@@ -30,16 +30,19 @@
 ## 🛠 Tech Stack (기술 스택)
 
 ### **AI Agent & Automation**
+
 - **Framework**: FastAPI
 - **Agent Logic**: LangGraph
 - **Browser Automation**: Playwright (Python)
 - **LLM API**: OpenAI API (`gpt-4o-mini`)
 
 ### **Backend**
+
 - **Framework**: Django & Django REST Framework (DRF)
 - **Database & ORM**: PostgreSQL, Django ORM
 
 ### **Frontend**
+
 - **Mobile App**: Expo (React Native)
 - **Web Client**: Next.js 15 (React 19, TypeScript)
 
@@ -58,6 +61,6 @@
                 ▼
 [ AI Agent Server (FastAPI / LangGraph) ]
                 │
-                ├── OpenAI API (예약 정보 정규화 & 파싱 / Information Normalization)
-                └── Playwright Automation (네이버 예약 페이지 자동화 / Naver Booking Automation)
+                ├── OpenAI API - Information Normalization (예약 정보 정규화)
+                └── Playwright Automation - Naver Booking Automation (네이버 예약 자동화)
 ```
