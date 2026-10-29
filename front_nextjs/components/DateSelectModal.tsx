@@ -3,6 +3,7 @@
 import React from "react";
 import { DateModalProps } from "@/types/booking/DateModalProps";
 import { TODAY_STR } from "@/constants/TODAY_STR";
+import { useDateSelectModalLanguage } from "@/hooks/languages/useDateSelectModalLanguage";
 
 export default function DateSelectModal({
   visible,
@@ -16,6 +17,8 @@ export default function DateSelectModal({
   bookingDate,
   onSelectDate,
 }: DateModalProps) {
+  const { t } = useDateSelectModalLanguage();
+
   if (!visible) return null;
 
   return (
@@ -40,7 +43,7 @@ export default function DateSelectModal({
           )}
 
           <h3 className="text-lg font-semibold text-gray-900 text-center mb-3">
-            {currentYear}년 {currentMonth + 1}월
+            {t.formatYearMonth(currentYear, currentMonth)}
           </h3>
 
           <button
@@ -52,7 +55,7 @@ export default function DateSelectModal({
         </div>
 
         <div className="flex mb-2.5">
-          {["일", "월", "화", "수", "목", "금", "토"].map((week, idx) => (
+          {t.weekDays.map((week, idx) => (
             <span
               key={week}
               className={`flex-1 text-center text-[13px] font-semibold ${
@@ -106,7 +109,7 @@ export default function DateSelectModal({
           onClick={onClose}
           className="cursor-pointer w-full py-3.5 mt-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold text-sm transition-colors"
         >
-          닫기
+          {t.closeBtn}
         </button>
       </div>
     </div>

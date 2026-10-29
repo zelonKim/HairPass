@@ -8,9 +8,11 @@ import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { getNaverAccount } from "@/api/auth/getNaverAccount";
 import { useNaverAccountMutation } from "@/hooks/auth/useNaverAccountMutation";
 import { NaverAccountData } from "@/types/auth/NaverAccountData";
+import { useNaverAccountLanguage } from "@/hooks/languages/useNaverAccountLanguage";
 
 export default function NaverAccountScreen() {
   const router = useRouter();
+  const { t } = useNaverAccountLanguage();
 
   const [naverId, setNaverId] = useState("");
   const [naverPw, setNaverPw] = useState("");
@@ -52,8 +54,8 @@ export default function NaverAccountScreen() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="cursor-pointer p-1 rounded-xl text-slate-700 hover:bg-blue-100 transition-colors"
-          aria-label="뒤로 가기"
+          className="cursor-pointer p-1.5 rounded-3xl text-slate-700 hover:bg-blue-100 transition-colors"
+          aria-label={t("backButtonAria")}
         >
           <ArrowLeft className="w-6 h-6 text-[#35455b]" />
         </button>
@@ -62,21 +64,22 @@ export default function NaverAccountScreen() {
       <div className="max-w-md w-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            네이버 계정 연동
+            {t("headerTitle")}
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed">
-            자동 예약 실행 시 사용할 네이버 계정 정보를 입력해 주세요.
+            {t("headerSubtitle")}
           </p>
         </div>
 
         <form onSubmit={handleSaveAccount} className="flex flex-col gap-4">
+          {/* 계정 아이디 */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold text-gray-800">
-              계정 아이디
+              {t("idLabel")}
             </label>
             <input
               type="text"
-              placeholder="아이디를 입력해주세요."
+              placeholder={t("idPlaceholder")}
               value={naverId}
               onChange={(e) => setNaverId(e.target.value)}
               disabled={isFetching}
@@ -86,14 +89,15 @@ export default function NaverAccountScreen() {
             />
           </div>
 
+          {/* 계정 비밀번호 */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold text-gray-800">
-              계정 비밀번호
+              {t("pwLabel")}
             </label>
             <div className="relative flex items-center h-12 border border-gray-300 rounded-lg bg-gray-50 focus-within:ring-1 focus-within:ring-[#03C75A] focus-within:bg-white transition-all">
               <input
                 type={isPasswordVisible ? "text" : "password"}
-                placeholder="비밀번호를 입력해주세요."
+                placeholder={t("pwPlaceholder")}
                 value={naverPw}
                 onChange={(e) => setNaverPw(e.target.value)}
                 disabled={isFetching}
@@ -104,7 +108,7 @@ export default function NaverAccountScreen() {
                 type="button"
                 onClick={() => setIsPasswordVisible(!isPasswordVisible)}
                 className="px-3.5 h-full flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="비밀번호 표시 전환"
+                aria-label={t("pwToggleAria")}
               >
                 {isPasswordVisible ? (
                   <EyeOff className="w-5 h-5" />
@@ -115,6 +119,7 @@ export default function NaverAccountScreen() {
             </div>
           </div>
 
+          {/* 연동 버튼 */}
           <button
             type="submit"
             disabled={NaverAccountPending || isFetching}
@@ -128,11 +133,11 @@ export default function NaverAccountScreen() {
               <div className="flex items-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin text-white" />
                 <span>
-                  {NaverAccountPending ? "저장 중..." : "불러오는 중..."}
+                  {NaverAccountPending ? t("savingText") : t("loadingText")}
                 </span>
               </div>
             ) : (
-              "계정 연동하기"
+              t("submitButton")
             )}
           </button>
         </form>

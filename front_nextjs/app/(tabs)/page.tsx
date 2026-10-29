@@ -15,9 +15,11 @@ import { THIS_YEAR } from "@/constants/THIS_YEAR";
 import { THIS_MONTH } from "@/constants/THIS_MONTH";
 import { getDaysInMonth } from "@/utils/getDaysInMonth";
 import TimeSelectModal from "@/components/TimeSelectModal";
+import { useHomeLanguage } from "@/hooks/languages/useHomeLanguage";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useHomeLanguage(); // 훅 호출
 
   const [salonName, setSalonName] = useState("");
   const [designerName, setDesignerName] = useState("");
@@ -54,6 +56,7 @@ export default function HomeScreen() {
       setCurrentMonth(currentMonth + 1);
     }
   };
+
   /////////////////////////////////////////////////////////////////////
 
   const { data: favData } = useQuery<FavoriteData>({
@@ -91,14 +94,12 @@ export default function HomeScreen() {
       !bookingDate ||
       !bookingTime
     ) {
-      alert("예약 정보를 모두 입력해 주세요");
+      alert(t("alertIncomplete"));
       return;
     }
 
     if (!userInfo?.naver_id || !userInfo?.naver_pw) {
-      const confirmed = window.confirm(
-        "자동 예약을 위해 최초 1회 네이버 계정 연동이 필요합니다. 연동 페이지로 이동하시겠습니까?",
-      );
+      const confirmed = window.confirm(t("confirmNaverLink"));
       if (confirmed) {
         router.push("/naver-account");
       }
@@ -118,59 +119,61 @@ export default function HomeScreen() {
   /////////////////////////////////////////////////////////////////////
 
   return (
-    <main className="min-h-screen bg-blue-50  flex flex-col items-center py-6 px-4">
-      <div className="max-w-xl w-full">
+    <main className="min-h-screen bg-blue-50 flex flex-col items-center py-6 px-4">
+      <div className="max-w-xl w-full pb-10">
         <header className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Store className="w-6 h-6 text-[#00c05a]" />
             <h1 className="text-[21px] font-bold text-gray-900">
-              미용실 예약 요청
+              {t("headerTitle")}
             </h1>
           </div>
-          <p className="text-sm text-gray-500">
-            AI 에이전트가 대신 미용실을 예약해 줄게요.
-          </p>
+          <p className="text-sm text-gray-500">{t("headerSubtitle")}</p>
         </header>
 
         <form
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6"
         >
+          {/* 미용실 이름 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-2 mb-1.5">
-            미용실 이름
+            {t("salonNameLabel")}
           </label>
           <input
             type="text"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400  placeholder:text-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400 placeholder:text-gray-400"
             value={salonName}
             onChange={(e) => setSalonName(e.target.value)}
-            placeholder="예) 박준뷰티랩 청담점"
+            placeholder={t("salonNamePlaceholder")}
           />
 
+          {/* 담당 디자이너 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-4 mb-1.5">
-            담당 디자이너
+            {t("designerNameLabel")}
           </label>
           <input
             type="text"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3  text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400 placeholder:text-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400 placeholder:text-gray-400"
             value={designerName}
             onChange={(e) => setDesignerName(e.target.value)}
-            placeholder="예) 한별쌤"
+            placeholder={t("designerNamePlaceholder")}
           />
 
+          {/* 시술 메뉴 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-4 mb-1.5">
-            시술 메뉴
+            {t("menuNameLabel")}
           </label>
           <input
             type="text"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3  text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400 placeholder:text-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] text-gray-900 font-medium focus:outline-none focus:ring-1 focus:ring-green-400 placeholder:text-gray-400"
             value={menuName}
             onChange={(e) => setMenuName(e.target.value)}
-            placeholder="예) 뿌리염색"
+            placeholder={t("menuNamePlaceholder")}
           />
 
+          {/* 예약 날짜 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-4 mb-1.5">
-            예약 날짜
+            {t("bookingDateLabel")}
           </label>
           <div
             onClick={() => setIsDateModalOpen(true)}
@@ -180,14 +183,14 @@ export default function HomeScreen() {
             <span
               className={`text-[15px] font-medium ${bookingDate ? "text-gray-900" : "text-gray-400"}`}
             >
-              {bookingDate || "날짜를 선택해주세요."}
+              {bookingDate || t("bookingDatePlaceholder")}
             </span>
           </div>
 
+          {/* 예약 시간 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-4 mb-1.5">
-            예약 시간
+            {t("bookingTimeLabel")}
           </label>
-
           <div
             onClick={() => setIsTimeModalOpen(true)}
             className="relative flex items-center w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors"
@@ -196,48 +199,50 @@ export default function HomeScreen() {
             <span
               className={`text-[15px] font-medium ${bookingTime ? "text-gray-900" : "text-gray-400"}`}
             >
-              {bookingTime || "시간을 선택해주세요."}
+              {bookingTime || t("bookingTimePlaceholder")}
             </span>
           </div>
 
+          {/* 결제 수단 */}
           <label className="block text-[13px] font-semibold text-gray-600 mt-4 mb-1.5">
-            결제 수단
+            {t("paymentMethodLabel")}
           </label>
           <div className="grid grid-cols-2 gap-3 mt-1 mb-6">
             <button
               type="button"
-              className={`cursor-pointer py-3.5 rounded-xl border text-center  text-[15px] font-medium transition-colors ${
+              className={`cursor-pointer py-3.5 rounded-xl border text-center text-[15px] font-medium transition-colors ${
                 paymentMethod === "NPAY"
                   ? "border-green-500 bg-green-50 text-green-600 font-bold"
                   : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100"
               }`}
               onClick={() => setPaymentMethod("NPAY")}
             >
-              네이버 페이
+              {t("npay")}
             </button>
 
             <button
               type="button"
-              className={`cursor-pointer py-3.5 rounded-xl border text-center  text-[15px] font-medium transition-colors ${
+              className={`cursor-pointer py-3.5 rounded-xl border text-center text-[15px] font-medium transition-colors ${
                 paymentMethod === "ONSITE"
-                  ? "border-green-500 bg-green-50 text-green-600 font-bold "
+                  ? "border-green-500 bg-green-50 text-green-600 font-bold"
                   : "border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100"
               }`}
               onClick={() => setPaymentMethod("ONSITE")}
             >
-              카드 및 현금
+              {t("onsite")}
             </button>
           </div>
 
+          {/* 제출 버튼 */}
           <button
             type="submit"
             disabled={createBookingPending}
-            className="cursor-pointer w-full  bg-[#00c05a] hover:bg-green-600 active:bg-green-600 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center disabled:opacity-50"
+            className="cursor-pointer w-full bg-[#00c05a] hover:bg-green-600 active:bg-green-600 text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center disabled:opacity-50"
           >
             {createBookingPending ? (
               <Loader2 className="w-5 h-5 animate-spin text-white" />
             ) : (
-              "미용실 예약 요청하기"
+              t("submitButton")
             )}
           </button>
         </form>

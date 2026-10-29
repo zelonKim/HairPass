@@ -10,9 +10,11 @@ import { loginApi } from "@/api/auth/loginApi";
 import { setAccessToken } from "@/api/token";
 import HairPassIcon from "@/public/HairPass_icon.png";
 import { AppDownloadModal } from "@/components/AppDownloadModal";
+import { useLoginLanguage } from "@/hooks/languages/useLoginLanguage";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useLoginLanguage(); // 변경된 훅 호출
 
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -29,14 +31,14 @@ export default function LoginScreen() {
       router.replace("/");
     },
     onError: () => {
-      window.alert("로그인 실패\n아이디 혹은 비밀번호가 올바르지 않습니다.");
+      window.alert(t("alertFail"));
     },
   });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      window.alert("이메일과 비밀번호를 모두 입력해 주세요.");
+      window.alert(t("alertEmpty"));
       return;
     }
     loginMutation({
@@ -49,19 +51,20 @@ export default function LoginScreen() {
 
   return (
     <main className="min-h-screen bg-blue-50 flex flex-col items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full ">
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
           className="cursor-pointer absolute top-6 right-6 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm border active:scale-[0.98] 
-          bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 shadow-gray-100 "
+          bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 shadow-gray-100"
         >
-          <Smartphone className="w-3.5 h-3.5  text-blue-500" />앱 다운로드
+          <Smartphone className="w-3.5 h-3.5 text-blue-500" />
+          {t("appDownload")}
         </button>
 
         {/* 헤더 및 로고 섹션 */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 rounded-full  mb-4 shadow-blue-300 shadow-md flex items-center justify-center overflow-hidden">
+          <div className="w-24 h-24 rounded-full mb-4 shadow-blue-300 shadow-md flex items-center justify-center overflow-hidden">
             <Image
               src={HairPassIcon}
               alt="HairPass Logo"
@@ -75,7 +78,7 @@ export default function LoginScreen() {
             HairPass
           </h1>
           <p className="text-sm text-gray-500 font-medium text-center">
-            나를 위한 미용실 자동 예약 에이전트
+            {t("subtitle")}
           </p>
         </div>
 
@@ -85,8 +88,8 @@ export default function LoginScreen() {
           className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm"
         >
           {/* 아이디 입력 */}
-          <label className="block text-[13px] font-semibold text-gray-500 mb-1.5">
-            아이디
+          <label className="block text-sm font-semibold text-gray-500 mb-1.5">
+            {t("usernameLabel")}
           </label>
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all">
             <UserRound className="w-4 h-4 text-gray-400 mr-2.5 shrink-0" />
@@ -95,14 +98,14 @@ export default function LoginScreen() {
               className="w-full py-3 text-[15px] text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="아이디를 입력해주세요."
+              placeholder={t("usernamePlaceholder")}
               autoCapitalize="none"
             />
           </div>
 
           {/* 비밀번호 입력 */}
-          <label className="block text-[13px] font-semibold text-gray-500 mt-6 mb-1.5">
-            비밀번호
+          <label className="block text-sm font-semibold text-gray-500 mt-6 mb-1.5">
+            {t("passwordLabel")}
           </label>
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all">
             <Lock className="w-4 h-4 text-gray-400 mr-2.5 shrink-0" />
@@ -111,7 +114,7 @@ export default function LoginScreen() {
               className="w-full py-3 text-[15px] text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호를 입력해주세요."
+              placeholder={t("passwordPlaceholder")}
               autoCapitalize="none"
             />
           </div>
@@ -125,25 +128,24 @@ export default function LoginScreen() {
             {loginPending ? (
               <Loader2 className="w-5 h-5 animate-spin text-white" />
             ) : (
-              "로그인하기"
+              t("loginButton")
             )}
           </button>
 
-          {/* 회원가입 링크 */}
           <div className="mt-5 text-center">
-            <p className="text-[13px] text-gray-500">
-              아직 계정이 없으신가요?{" "}
+            <p className="text-sm text-gray-500">
+              {t("noAccount")}{" "}
               <Link
                 href="/signup"
                 className="text-blue-600 font-bold hover:underline"
               >
-                회원가입
+                {t("signup")}
               </Link>
             </p>
           </div>
         </form>
       </div>
-      
+
       <AppDownloadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

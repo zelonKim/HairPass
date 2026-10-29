@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { AndroidDownloadInfo } from "./AndroidDownloadInfo";
 import { IosDownloadInfo } from "./IosDownloadInfo";
+import { useAppDownloadModalLanguage } from "@/hooks/languages/useAppDownloadModalLanguage";
 
 type TabType = "android" | "ios";
 
@@ -17,6 +18,7 @@ export const AppDownloadModal = ({
   isOpen,
   onClose,
 }: AppDownloadModalProps) => {
+  const { t } = useAppDownloadModalLanguage(); // 모달 전용 훅 호출
   const [activeTab, setActiveTab] = useState<TabType>("android");
 
   if (!isOpen) return null;
@@ -36,14 +38,14 @@ export const AppDownloadModal = ({
 
         <div className="text-center mt-2 mb-4">
           <h3 className="text-xl font-black tracking-tight mb-1">
-            HairPass 모바일 앱 💈
+            {t("modalTitle")}
           </h3>
-          <p className={`text-xs font-medium ${"text-gray-500"}`}>
-            원하시는 모바일 운영체제를 선택해 주세요
+          <p className="text-[13px] font-medium text-gray-500">
+            {t("modalSubtitle")}
           </p>
         </div>
 
-        <div className={`w-full flex p-1 rounded-xl mb-5 ${"bg-gray-100"}`}>
+        <div className="w-full flex p-1 rounded-xl mb-5 bg-gray-100">
           <button
             type="button"
             onClick={() => setActiveTab("android")}
@@ -53,7 +55,7 @@ export const AppDownloadModal = ({
                 : "cursor-pointer text-gray-400 hover:text-gray-500"
             }`}
           >
-            Android
+            {t("androidTab")}
           </button>
           <button
             type="button"
@@ -64,7 +66,7 @@ export const AppDownloadModal = ({
                 : "cursor-pointer text-gray-400 hover:text-gray-500"
             }`}
           >
-            iOS (iPhone)
+            {t("iosTab")}
           </button>
         </div>
 
@@ -79,7 +81,7 @@ export const AppDownloadModal = ({
           onClick={onClose}
           className="cursor-pointer w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm mt-5 transition-all active:scale-[0.99]"
         >
-          확인
+          {t("confirmButton")}
         </button>
       </div>
     </div>
